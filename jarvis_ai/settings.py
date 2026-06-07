@@ -30,14 +30,24 @@ DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+    for h in os.getenv(
+        'ALLOWED_HOSTS',
+        'jarvis-ai-n8ph.onrender.com,127.0.0.1,localhost'
+    ).split(',')
     if h.strip()
 ]
+
+# Also allow any .onrender.com subdomain (Render preview deploys)
+if any(h.endswith('.onrender.com') for h in ALLOWED_HOSTS):
+    ALLOWED_HOSTS.append('.onrender.com')
 
 # Accept Render / Railway auto-assigned hosts
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'https://jarvis-ai-n8ph.onrender.com'
+    ).split(',')
     if origin.strip()
 ]
 
