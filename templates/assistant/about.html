@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<section class="placeholder-page" id="about-page" aria-labelledby="about-heading">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-7 text-center">
+
+        <div class="placeholder-icon mb-3" aria-hidden="true">
+          <i class="bi bi-info-circle-fill"></i>
+        </div>
+
+        <h1 class="placeholder-title" id="about-heading">About Jarvis AI</h1>
+
+        <p class="placeholder-body">
+          Jarvis AI Assistant is an intelligent, AI-powered personal productivity platform
+          designed to help you work smarter. Built with cutting-edge language models,
+          voice recognition, and personal memory &mdash; Jarvis is your always-on
+          digital co-pilot.
+        </p>
+
+        <p class="placeholder-body">
+          We're in active development. The full About page — including our mission,
+          technology stack, team, and roadmap — is coming soon.
+        </p>
+
+        <span class="badge-soon">Full page coming soon</span>
+
+        <div class="d-flex flex-wrap justify-content-center gap-3 mt-2">
+          <a href="{% url 'assistant:home' %}" class="btn-primary-jarvis" id="about-back-home">
+            <i class="bi bi-house-fill" aria-hidden="true"></i>
+            Back to Home
+          </a>
+          <a href="{% url 'assistant:register' %}" class="btn-secondary-jarvis" id="about-register">
+            <i class="bi bi-person-plus" aria-hidden="true"></i>
+            Get Started
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,326 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO Meta -->
+  <title>{% block title %}{{ page_title|default:"Jarvis AI Assistant" }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Jarvis AI Assistant — your personal AI-powered productivity partner for chat, voice control, notes, reminders, and more.{% endblock %}" />
+  <meta name="author" content="Jarvis AI" />
+
+  <!-- Open Graph -->
+  <meta property="og:title"       content="Jarvis AI Assistant" />
+  <meta property="og:description" content="Your Personal AI-Powered Productivity Assistant" />
+  <meta property="og:type"        content="website" />
+
+  <!-- Bootstrap 5 CSS (via CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+
+  <!-- Bootstrap Icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+
+  <!-- Jarvis Custom CSS -->
+  <link rel="stylesheet" href="{% static 'css/jarvis.css' %}" />
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- ======================================================
+       Navigation Bar
+  ====================================================== -->
+  <nav class="navbar navbar-expand-lg jarvis-navbar" id="mainNav" aria-label="Main navigation">
+    <div class="container">
+
+      <!-- Brand -->
+      <a class="navbar-brand-custom" href="{% url 'assistant:home' %}" aria-label="Jarvis AI Home">
+        <span class="brand-icon" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </span>
+        <span class="brand-name">Jarvis AI</span>
+      </a>
+
+      <!-- Hamburger toggler (mobile) -->
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarContent"
+        aria-controls="navbarContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Nav links -->
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav mx-auto gap-1" role="list">
+          <!-- Home (always visible) -->
+          <li class="nav-item">
+            <a
+              id="nav-home"
+              class="nav-link jarvis-nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+              href="{% url 'assistant:home' %}"
+            >
+              <i class="bi bi-house me-1"></i>Home
+            </a>
+          </li>
+
+          <!-- About (always visible) -->
+          <li class="nav-item">
+            <a
+              id="nav-about"
+              class="nav-link jarvis-nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}"
+              href="{% url 'assistant:about' %}"
+            >
+              <i class="bi bi-info-circle me-1"></i>About
+            </a>
+          </li>
+
+          {% if user.is_authenticated %}
+          <!-- Dashboard (logged-in only) -->
+          <li class="nav-item">
+            <a
+              id="nav-dashboard"
+              class="nav-link jarvis-nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+              href="{% url 'assistant:dashboard' %}"
+            >
+              <i class="bi bi-speedometer2 me-1"></i>Dashboard
+            </a>
+          </li>
+          <!-- Chat -->
+          <li class="nav-item">
+            <a
+              id="nav-chat"
+              class="nav-link jarvis-nav-link {% if 'chat' in request.resolver_match.url_name %}active{% endif %}"
+              href="{% url 'assistant:chat_home' %}"
+            >
+              <i class="bi bi-chat-dots me-1"></i>Chat
+            </a>
+          </li>
+          <!-- Memory -->
+          <li class="nav-item">
+            <a
+              id="nav-memory"
+              class="nav-link jarvis-nav-link {% if 'memory' in request.resolver_match.url_name %}active{% endif %}"
+              href="{% url 'assistant:memory_list' %}"
+            >
+              <i class="bi bi-brain me-1"></i>Memory
+            </a>
+          </li>
+          <!-- Documents / Knowledge Vault -->
+          <li class="nav-item">
+            <a
+              id="nav-documents"
+              class="nav-link jarvis-nav-link {% if 'document' in request.resolver_match.url_name %}active{% endif %}"
+              href="{% url 'assistant:document_list' %}"
+            >
+              <i class="bi bi-folder2-open me-1"></i>Vault
+            </a>
+          </li>
+          <!-- Voice Assistant -->
+          <li class="nav-item">
+            <a
+              id="nav-voice-assistant"
+              class="nav-link jarvis-nav-link {% if request.resolver_match.url_name == 'voice_assistant' %}active{% endif %}"
+              href="{% url 'assistant:voice_assistant' %}"
+              title="Voice Assistant"
+            >
+              <i class="bi bi-mic-fill me-1"></i>Voice
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+
+        <!-- Auth controls (right side) -->
+        <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0">
+          {% if user.is_authenticated %}
+            <!-- Logged-in: show avatar chip + Logout -->
+            <span class="navbar-user-chip" aria-label="Logged in as {{ user.username }}">
+              <i class="bi bi-person-circle" aria-hidden="true"></i>
+              {{ user.username }}
+            </span>
+            <a
+              id="nav-logout"
+              href="{% url 'assistant:logout' %}"
+              class="nav-link jarvis-nav-link btn-nav-login"
+              aria-label="Log out"
+            >
+              <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Logout
+            </a>
+          {% else %}
+            <!-- Guest: show Login + Register -->
+            <a
+              id="nav-login"
+              class="nav-link jarvis-nav-link btn-nav-login"
+              href="{% url 'assistant:login' %}"
+            >
+              Login
+            </a>
+            <a
+              id="nav-register"
+              class="nav-link btn-nav-register"
+              href="{% url 'assistant:register' %}"
+            >
+              Get Started
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ======================================================
+       Flash Messages Banner
+  ====================================================== -->
+  {% if messages %}
+  <div class="messages-container" role="alert" aria-live="polite">
+    <div class="container">
+      {% for message in messages %}
+      <div
+        class="jarvis-alert {{ message.tags }}"
+        id="msg-{{ forloop.counter }}"
+        role="alert"
+      >
+        <div class="alert-content">
+          {% if 'alert-success' in message.tags %}
+            <i class="bi bi-check-circle-fill alert-icon" aria-hidden="true"></i>
+          {% elif 'alert-danger' in message.tags %}
+            <i class="bi bi-exclamation-triangle-fill alert-icon" aria-hidden="true"></i>
+          {% elif 'alert-warning' in message.tags %}
+            <i class="bi bi-exclamation-circle-fill alert-icon" aria-hidden="true"></i>
+          {% else %}
+            <i class="bi bi-info-circle-fill alert-icon" aria-hidden="true"></i>
+          {% endif %}
+          <span>{{ message }}</span>
+        </div>
+        <button
+          type="button"
+          class="alert-close"
+          onclick="this.parentElement.remove()"
+          aria-label="Close"
+        >
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ======================================================
+       Main Content
+  ====================================================== -->
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ======================================================
+       Footer
+  ====================================================== -->
+  <footer class="jarvis-footer" aria-label="Site footer">
+    <div class="container">
+      <div class="row g-4">
+
+        <!-- Brand column -->
+        <div class="col-lg-4">
+          <a class="footer-brand" href="{% url 'assistant:home' %}" aria-label="Jarvis AI Home">
+            <span class="brand-icon" aria-hidden="true">
+              <i class="bi bi-lightning-charge-fill"></i>
+            </span>
+            <span class="brand-name">Jarvis AI</span>
+          </a>
+          <p class="footer-tagline">
+            Your intelligent productivity partner — powered by cutting-edge AI to help you work smarter, not harder.
+          </p>
+        </div>
+
+        <!-- Product links -->
+        <div class="col-6 col-lg-2 offset-lg-1">
+          <h3 class="footer-heading">Product</h3>
+          <ul class="footer-links">
+            <li><a href="{% url 'assistant:home' %}">Home</a></li>
+            <li><a href="{% url 'assistant:about' %}">About</a></li>
+            <li><a href="#">Features</a></li>
+            <li><a href="#">Pricing</a></li>
+          </ul>
+        </div>
+
+        <!-- Quick links -->
+        <div class="col-6 col-lg-2">
+          <h3 class="footer-heading">Account</h3>
+          <ul class="footer-links">
+            <li><a href="{% url 'assistant:login' %}">Login</a></li>
+            <li><a href="{% url 'assistant:register' %}">Register</a></li>
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Settings</a></li>
+          </ul>
+        </div>
+
+        <!-- Legal links -->
+        <div class="col-6 col-lg-2">
+          <h3 class="footer-heading">Legal</h3>
+          <ul class="footer-links">
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Cookie Policy</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <hr class="footer-divider" />
+
+      <div class="footer-bottom">
+        <p class="footer-copyright mb-0">
+          &copy; {% now "Y" %} Jarvis AI Assistant. All rights reserved.
+        </p>
+        <div class="footer-socials" aria-label="Social media links">
+          <a href="#" class="social-btn" aria-label="GitHub">
+            <i class="bi bi-github"></i>
+          </a>
+          <a href="#" class="social-btn" aria-label="Twitter / X">
+            <i class="bi bi-twitter-x"></i>
+          </a>
+          <a href="#" class="social-btn" aria-label="LinkedIn">
+            <i class="bi bi-linkedin"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================
+       Scripts
+  ====================================================== -->
+  <!-- Bootstrap 5 JS Bundle (includes Popper) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmn2+U6bNMTFqwi0h7p5SMMFRdl"
+    crossorigin="anonymous"
+    defer
+  ></script>
+
+  <!-- Navbar scroll-shadow behaviour -->
+  <script>
+    (function () {
+      const nav = document.getElementById('mainNav');
+      window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 20);
+      }, { passive: true });
+    })();
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

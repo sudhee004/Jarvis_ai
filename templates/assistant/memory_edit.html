@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ====================================================================
+   Memory Edit Page
+==================================================================== */
+.edit-card {
+  max-width: 600px; margin: 0 auto;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px; padding: 2rem 2.5rem;
+}
+.edit-card h1 {
+  font-size: 1.4rem; font-weight: 700;
+  color: var(--clr-text); margin-bottom: .25rem;
+  display: flex; align-items: center; gap: .6rem;
+}
+.edit-card h1 i { color: #63b3ed; }
+.edit-card p.sub  { color: var(--clr-text-muted); font-size: .85rem; margin-bottom: 1.5rem; }
+
+.jarvis-input {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: var(--clr-text) !important;
+  border-radius: 10px !important; padding: .65rem 1rem !important;
+}
+.jarvis-input:focus {
+  border-color: rgba(99,179,237,.4) !important;
+  box-shadow: 0 0 0 3px rgba(99,179,237,.08) !important; outline: none;
+}
+.jarvis-input::placeholder { color: var(--clr-text-dim) !important; }
+.form-text { color: var(--clr-text-dim) !important; font-size: .75rem; }
+.form-select.jarvis-input option { background: #1a2035; color: #e2e8f0; }
+.form-label { font-size: .82rem; color: var(--clr-text-muted); }
+
+.btn-save-mem {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: linear-gradient(135deg, #63b3ed, #4299e1);
+  color: #fff; font-weight: 700; border: none;
+  border-radius: 10px; padding: .65rem 1.5rem; cursor: pointer;
+  transition: opacity .2s, transform .15s;
+}
+.btn-save-mem:hover { opacity: .9; transform: translateY(-1px); }
+
+.key-readonly {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(20,241,149,.06) !important;
+  border-color: rgba(20,241,149,.15) !important;
+  color: #14f195 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-page" id="memory-edit-page" aria-labelledby="edit-heading">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" style="margin-bottom:1.5rem;">
+      <ol class="breadcrumb" style="background:none;padding:0;font-size:.82rem;">
+        <li class="breadcrumb-item">
+          <a href="{% url 'assistant:dashboard' %}" style="color:var(--clr-text-muted);">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'assistant:memory_list' %}" style="color:var(--clr-text-muted);">Memories</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page" style="color:var(--clr-text-dim);">
+          Edit
+        </li>
+      </ol>
+    </nav>
+
+    <div class="edit-card">
+      <h1 id="edit-heading">
+        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        Edit Memory
+      </h1>
+      <p class="sub">
+        Update the value Jarvis remembers for this fact.
+        The key is fixed to avoid confusion with auto-extracted memories.
+      </p>
+
+      <form method="post" action="{% url 'assistant:memory_edit' memory.id %}" id="editMemoryForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Key (read-only display) -->
+        <div class="mb-3">
+          <label class="form-label">Memory Key</label>
+          <input type="text" class="form-control jarvis-input key-readonly"
+                 value="{{ memory.key }}" readonly aria-label="Memory key (read-only)" />
+          <div class="form-text">Key cannot be changed — delete and recreate if needed.</div>
+        </div>
+
+        <!-- Value -->
+        <div class="mb-3">
+          <label for="id_mem_value" class="form-label">
+            Value <span style="color:#f56565">*</span>
+          </label>
+          {{ form.value }}
+          {% for err in form.value.errors %}
+          <div class="form-text" style="color:#f56565;">{{ err }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- Category -->
+        <div class="mb-4">
+          <label for="id_mem_category" class="form-label">Category</label>
+          {{ form.category }}
+        </div>
+
+        <div class="d-flex gap-3">
+          <a href="{% url 'assistant:memory_list' %}" class="btn-secondary-jarvis" id="editCancelBtn">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Cancel
+          </a>
+          <button type="submit" class="btn-save-mem" id="editSaveBtn">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

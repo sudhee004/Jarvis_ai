@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Your Jarvis AI personal dashboard — manage your AI chat, voice assistant, notes, and
+reminders all in one place.{% endblock %}
+
+{% block content %}
+<section class="dashboard-page" id="dashboard" aria-labelledby="dashboard-heading">
+  <div class="container">
+
+    <!-- ============================================================
+         Welcome Hero Strip
+    ============================================================ -->
+    <div class="dashboard-hero">
+      <div class="d-flex align-items-center gap-4 flex-wrap">
+
+        <!-- Avatar -->
+        <div class="dashboard-avatar" aria-hidden="true" title="{{ user.username }}">
+          {{ user.username|slice:":1"|upper }}
+        </div>
+
+        <!-- Copy -->
+        <div>
+          <p class="dashboard-greeting mb-0">
+            <i class="bi bi-sun-fill me-1" aria-hidden="true"></i>
+            {% now "H" as current_hour %}
+            {% if current_hour|add:"0" < 12 %}Good morning{% elif current_hour|add:"0" < 18 %}Good afternoon{% else
+              %}Good evening{% endif %} </p>
+              <h1 class="dashboard-welcome" id="dashboard-heading">
+                Welcome Back,
+                <span class="username-highlight">{{ user.username }}</span> 👋
+              </h1>
+              <p class="dashboard-sub mb-0">
+                Your AI workspace is ready. Here's your overview for today.
+              </p>
+        </div>
+
+        <!-- Member since (right-aligned on large screens) -->
+        <div class="ms-lg-auto text-end d-none d-md-block">
+          <p class="mb-0" style="font-size:0.8rem;color:var(--clr-text-dim);">Member since</p>
+          <p class="mb-0 fw-600" style="font-size:0.9rem;color:var(--clr-text-muted);">
+            {{ user.date_joined|date:"N j, Y" }}
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Stats Row
+    ============================================================ -->
+    <h2 class="dash-section-title" id="stats-heading">
+      <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+      Your Activity
+    </h2>
+    <div class="row g-3 mb-4" aria-labelledby="stats-heading">
+      {% for stat in stats %}
+      <div class="col-6 col-lg-3">
+        <div class="stat-card {{ stat.color }}">
+          <div class="stat-icon-wrap" aria-hidden="true">
+            <i class="bi {{ stat.icon }}"></i>
+          </div>
+          <div>
+            <div class="stat-value">{{ stat.value }}</div>
+            <div class="stat-label">{{ stat.label }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ============================================================
+         Main 2-Column Layout
+    ============================================================ -->
+    <div class="row g-4">
+
+      <!-- LEFT: Quick Actions -->
+      <div class="col-lg-7">
+        <h2 class="dash-section-title" id="quick-actions-heading">
+          <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+          Quick Actions
+          <span class="coming-soon-badge">AI features coming soon</span>
+        </h2>
+
+        <div class="row g-3" aria-labelledby="quick-actions-heading">
+          {% for action in quick_actions %}
+          <div class="col-6">
+            <a href="{{ action.href }}" class="qa-card {{ action.color }}" id="qa-{{ action.label|lower|slugify }}"
+              aria-label="{{ action.label }} — coming soon">
+              <div class="qa-icon" aria-hidden="true">
+                <i class="bi {{ action.icon }}"></i>
+              </div>
+              <span class="qa-label">{{ action.label }}</span>
+              <i class="bi bi-arrow-right qa-arrow" aria-hidden="true"></i>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Tip card -->
+        <div class="jarvis-alert alert-info mt-4" role="note">
+          <div class="alert-content">
+            <i class="bi bi-info-circle-fill alert-icon" aria-hidden="true"></i>
+            <span>
+              <strong>Tip:</strong> AI features including Chat, Voice, Notes, and Memory are coming in the next sprint.
+              Stay tuned!
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Account Info -->
+      <div class="col-lg-5">
+        <h2 class="dash-section-title" id="account-info-heading">
+          <i class="bi bi-person-circle" aria-hidden="true"></i>
+          Account Info
+        </h2>
+
+        <div class="account-widget" aria-labelledby="account-info-heading">
+          <div class="account-row">
+            <span class="account-row-label">Username</span>
+            <span class="account-row-value">{{ user.username }}</span>
+          </div>
+          <div class="account-row">
+            <span class="account-row-label">Email</span>
+            <span class="account-row-value">
+              {{ user.email|default:"Not provided" }}
+            </span>
+          </div>
+          <div class="account-row">
+            <span class="account-row-label">Account Status</span>
+            <span class="account-row-value" style="color:var(--clr-teal);">
+              <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>Active
+            </span>
+          </div>
+          <div class="account-row">
+            <span class="account-row-label">Member Since</span>
+            <span class="account-row-value">{{ user.date_joined|date:"N j, Y" }}</span>
+          </div>
+          <div class="account-row">
+            <span class="account-row-label">Last Login</span>
+            <span class="account-row-value">
+              {{ user.last_login|date:"N j, Y, g:i a"|default:"Now" }}
+            </span>
+          </div>
+          <div class="account-row">
+            <span class="account-row-label">Plan</span>
+            <span class="account-row-value" style="color:var(--clr-cyan);">
+              Free Tier
+            </span>
+          </div>
+        </div>
+
+        <!-- Logout button -->
+        <div class="mt-3">
+          <a href="{% url 'assistant:logout' %}" class="btn-secondary-jarvis w-100 justify-content-center"
+            id="dashboard-logout-btn" aria-label="Log out of Jarvis AI">
+            <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /.row -->
+
+  </div>
+</section>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  /*
+   * Staggered entrance for stat and quick-action cards.
+   */
+  (function () {
+    const items = document.querySelectorAll('.stat-card, .qa-card');
+    if (!('IntersectionObserver' in window)) return;
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    items.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = `opacity 0.4s ${i * 80}ms ease, transform 0.4s ${i * 80}ms ease`;
+      io.observe(el);
+    });
+  })();
+</script>
+{% endblock %}

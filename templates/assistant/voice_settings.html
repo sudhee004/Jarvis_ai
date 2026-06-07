@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Configure Jarvis voice: choose gender, language (English / Kannada / Mixed), speaking speed and pitch.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ====================================================================
+   Voice Settings Page
+==================================================================== */
+.vs-card {
+  max-width: 620px; margin: 0 auto;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px; padding: 2rem 2.5rem;
+}
+.vs-card h1 {
+  font-size: 1.4rem; font-weight: 700; color: var(--clr-text);
+  display: flex; align-items: center; gap: .6rem; margin-bottom: .25rem;
+}
+.vs-card h1 i { color: #9f7aea; }
+.vs-card .sub { color: var(--clr-text-muted); font-size: .85rem; margin-bottom: 2rem; }
+
+.form-label { font-size: .82rem; color: var(--clr-text-muted); margin-bottom: .35rem; }
+.jarvis-input {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: var(--clr-text) !important; border-radius: 10px !important;
+  padding: .65rem 1rem !important;
+}
+.jarvis-input:focus {
+  border-color: rgba(159,122,234,.4) !important;
+  box-shadow: 0 0 0 3px rgba(159,122,234,.08) !important; outline: none;
+}
+.form-select.jarvis-input option { background: #1a2035; color: #e2e8f0; }
+.form-text { color: var(--clr-text-dim) !important; font-size: .75rem; }
+
+/* Slider */
+.slider-wrap { padding: .25rem 0 .1rem; }
+.form-range { width: 100%; accent-color: #9f7aea; }
+.slider-labels {
+  display: flex; justify-content: space-between;
+  font-size: .7rem; color: var(--clr-text-dim); margin-top: .2rem;
+}
+.slider-value {
+  text-align: center; font-size: .85rem; font-weight: 600;
+  color: #9f7aea; margin-top: .2rem;
+}
+
+/* Auto-speak toggle */
+.form-switch .form-check-input { width: 2.4em; height: 1.3em; cursor: pointer; }
+.form-check-input:checked { background-color: #9f7aea; border-color: #9f7aea; }
+
+/* Voice preview section */
+.voice-preview-card {
+  background: rgba(159,122,234,.06); border: 1px solid rgba(159,122,234,.15);
+  border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;
+}
+.voice-preview-card h3 {
+  font-size: .85rem; font-weight: 600; color: var(--clr-text);
+  margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem;
+}
+.voice-preview-card h3 i { color: #9f7aea; }
+
+.btn-test-voice {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: rgba(159,122,234,.15); border: 1px solid rgba(159,122,234,.3);
+  color: #9f7aea; border-radius: 10px; padding: .55rem 1.2rem;
+  cursor: pointer; font-size: .85rem; transition: background .2s;
+}
+.btn-test-voice:hover { background: rgba(159,122,234,.28); }
+
+.btn-save-vs {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: linear-gradient(135deg, #9f7aea, #6b46c1);
+  color: #fff; font-weight: 700; border: none; border-radius: 10px;
+  padding: .65rem 1.5rem; cursor: pointer; transition: opacity .2s, transform .15s;
+}
+.btn-save-vs:hover { opacity: .9; transform: translateY(-1px); }
+
+.available-voices-list {
+  font-size: .72rem; color: var(--clr-text-dim); max-height: 120px;
+  overflow-y: auto; background: rgba(0,0,0,.2); border-radius: 8px;
+  padding: .5rem .75rem; margin-top: .5rem;
+}
+.available-voices-list p { margin: .15rem 0; }
+
+/* Section divider */
+.vs-section-label {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--clr-text-dim);
+  margin: 1.75rem 0 .9rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.vs-section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.07); }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-page" id="voice-settings-page" aria-labelledby="vs-heading">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" style="margin-bottom:1.5rem;">
+      <ol class="breadcrumb" style="background:none;padding:0;font-size:.82rem;">
+        <li class="breadcrumb-item">
+          <a href="{% url 'assistant:dashboard' %}" style="color:var(--clr-text-muted);">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page" style="color:var(--clr-text-dim);">Voice Settings</li>
+      </ol>
+    </nav>
+
+    <div class="vs-card">
+      <h1 id="vs-heading"><i class="bi bi-mic-fill" aria-hidden="true"></i> Voice Settings</h1>
+      <p class="sub">
+        Configure how Jarvis speaks and listens. Settings are saved to your account
+        and synced to this browser automatically.
+      </p>
+
+      <!-- ===== Live Preview ===== -->
+      <div class="voice-preview-card">
+        <h3><i class="bi bi-volume-up-fill" aria-hidden="true"></i> Test Voice</h3>
+        <p style="font-size:.82rem;color:var(--clr-text-muted);margin-bottom:.75rem;">
+          Click below to hear the currently configured voice.
+        </p>
+        <button class="btn-test-voice" id="testVoiceBtn"
+          aria-label="Test current voice settings">
+          <i class="bi bi-play-circle-fill" aria-hidden="true"></i> Play Sample
+        </button>
+        <div id="speakingBadge" style="display:none;margin-top:.5rem;font-size:.8rem;color:#9f7aea;">
+          <i class="bi bi-soundwave" aria-hidden="true"></i> Speaking…
+        </div>
+
+        <p class="vs-section-label mt-3">Available voices in your browser</p>
+        <div class="available-voices-list" id="availableVoicesList">
+          <p style="color:var(--clr-text-dim);font-style:italic;">Loading…</p>
+        </div>
+      </div>
+
+      <!-- ===== Settings Form ===== -->
+      <form method="post" action="{% url 'assistant:voice_settings' %}" id="voiceSettingsForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Voice Gender -->
+        <p class="vs-section-label"><i class="bi bi-person-fill" aria-hidden="true"></i> Voice Character</p>
+        <div class="mb-3">
+          <label for="voiceGenderSelect" class="form-label">Voice Gender</label>
+          {{ form.voice_gender }}
+        </div>
+
+        <!-- Language -->
+        <div class="mb-3">
+          <label for="voiceLangSelect" class="form-label">Speech Recognition Language</label>
+          {{ form.language }}
+          <div class="form-text">
+            "Mixed" uses English (India) — handles Kannada-English code-switching naturally.
+          </div>
+        </div>
+
+        <!-- Auto-speak -->
+        <p class="vs-section-label"><i class="bi bi-toggle-on" aria-hidden="true"></i> Behaviour</p>
+        <div class="mb-4 form-check form-switch">
+          {{ form.auto_speak }}
+          <label class="form-check-label" for="autoSpeakToggle" style="font-size:.9rem;color:var(--clr-text);">
+            {{ form.auto_speak.label }}
+          </label>
+          <div class="form-text">Jarvis will automatically speak every AI response.</div>
+        </div>
+
+        <!-- Speed -->
+        <p class="vs-section-label"><i class="bi bi-speedometer2" aria-hidden="true"></i> Voice Tuning</p>
+        <div class="mb-4">
+          <label for="voiceRateSlider" class="form-label">{{ form.speech_rate.label }}</label>
+          <div class="slider-wrap">
+            {{ form.speech_rate }}
+          </div>
+          <div class="slider-labels">
+            <span>0.5×</span><span>Normal (1.0×)</span><span>2.0×</span>
+          </div>
+          <div class="slider-value" id="rateDisplay">{{ vs.speech_rate }}</div>
+          <div class="form-text">{{ form.speech_rate.help_text }}</div>
+        </div>
+
+        <!-- Pitch -->
+        <div class="mb-4">
+          <label for="voicePitchSlider" class="form-label">{{ form.speech_pitch.label }}</label>
+          <div class="slider-wrap">
+            {{ form.speech_pitch }}
+          </div>
+          <div class="slider-labels">
+            <span>Low</span><span>Normal (1.0)</span><span>High</span>
+          </div>
+          <div class="slider-value" id="pitchDisplay">{{ vs.speech_pitch }}</div>
+          <div class="form-text">{{ form.speech_pitch.help_text }}</div>
+        </div>
+
+        <div class="d-flex gap-3">
+          <a href="{% url 'assistant:dashboard' %}" class="btn-secondary-jarvis" id="vsCancelBtn">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+          </a>
+          <button type="submit" class="btn-save-vs" id="vsSaveBtn">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Sync slider display values
+  const rateSlider  = document.getElementById('voiceRateSlider');
+  const pitchSlider = document.getElementById('voicePitchSlider');
+  const rateDisp    = document.getElementById('rateDisplay');
+  const pitchDisp   = document.getElementById('pitchDisplay');
+
+  if (rateSlider && rateDisp) {
+    rateSlider.addEventListener('input', () => {
+      rateDisp.textContent = parseFloat(rateSlider.value).toFixed(1) + '×';
+    });
+    rateDisp.textContent = parseFloat(rateSlider.value).toFixed(1) + '×';
+  }
+  if (pitchSlider && pitchDisp) {
+    pitchSlider.addEventListener('input', () => {
+      pitchDisp.textContent = parseFloat(pitchSlider.value).toFixed(1);
+    });
+    pitchDisp.textContent = parseFloat(pitchSlider.value).toFixed(1);
+  }
+
+  // List available voices in the browser
+  function populateVoiceList() {
+    const voices = window.speechSynthesis?.getVoices() ?? [];
+    const el = document.getElementById('availableVoicesList');
+    if (!el) return;
+    if (!voices.length) {
+      el.innerHTML = '<p>No voices detected (try Chrome or Edge).</p>';
+      return;
+    }
+    const enVoices = voices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('kn'));
+    el.innerHTML = enVoices.length
+      ? enVoices.map(v => `<p>${v.name} <span style="opacity:.5">(${v.lang})</span></p>`).join('')
+      : voices.slice(0, 12).map(v => `<p>${v.name} <span style="opacity:.5">(${v.lang})</span></p>`).join('');
+  }
+
+  populateVoiceList();
+  if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = populateVoiceList;
+
+  // After form save, push settings to localStorage so voice.js picks them up immediately
+  document.getElementById('voiceSettingsForm')?.addEventListener('submit', () => {
+    const gender = document.getElementById('voiceGenderSelect')?.value ?? 'female';
+    const lang   = document.getElementById('voiceLangSelect')?.value  ?? 'en-IN';
+    const rate   = parseFloat(rateSlider?.value  ?? 1.0);
+    const pitch  = parseFloat(pitchSlider?.value ?? 1.1);
+    const speak  = document.getElementById('autoSpeakToggle')?.checked ?? true;
+
+    try {
+      const cfg = JSON.parse(localStorage.getItem('jarvisVoiceCfg') || '{}');
+      Object.assign(cfg, { gender, lang, rate, pitch, autoSpeak: speak });
+      localStorage.setItem('jarvisVoiceCfg', JSON.stringify(cfg));
+    } catch { /* storage unavailable */ }
+  });
+</script>
+{% endblock %}

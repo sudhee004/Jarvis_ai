@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Talk naturally with Jarvis, your personal AI voice assistant.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Voice Assistant ── */
+body { overflow: hidden; }
+#main-content { height: calc(100vh - 62px); display: flex; flex-direction: column; overflow: hidden; }
+.jarvis-footer { display: none; }
+
+.va-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(20,241,149,.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 110%, rgba(99,102,241,.05) 0%, transparent 55%);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.va-header {
+  padding: 1.1rem 1.75rem .7rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
+}
+.va-greeting h1 { font-size: 1.35rem; font-weight: 700; color: var(--clr-text); margin: 0; }
+.va-greeting p  { font-size: .82rem; color: var(--clr-text-muted); margin: .15rem 0 0; }
+.va-header-actions { display: flex; align-items: center; gap: .5rem; }
+.va-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  color: var(--clr-text-muted); cursor: pointer; transition: all .2s;
+  text-decoration: none; font-size: .85rem;
+}
+.va-icon-btn:hover { background: rgba(20,241,149,.12); border-color: rgba(20,241,149,.3); color: #14f195; }
+
+/* ── Centre: Orb + Conversation ── */
+.va-centre {
+  display: grid; grid-template-columns: 240px 1fr;
+  min-height: 0; overflow: hidden;
+}
+
+/* ── Orb column ── */
+.va-orb-col {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1rem; padding: 1.25rem 1rem;
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+
+.orb-wrapper {
+  position: relative; width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+}
+.orb-ring {
+  position: absolute; border-radius: 50%;
+  border: 1.5px solid rgba(20,241,149,.25); opacity: 0;
+}
+.orb {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #1af19e, #0d8f5c 60%, #064d31);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; color: #0a0f1e;
+  box-shadow: 0 0 40px rgba(20,241,149,.3), inset 0 0 20px rgba(255,255,255,.08);
+  position: relative; z-index: 1;
+  animation: orb-breathe 4s ease-in-out infinite;
+  cursor: pointer; transition: transform .2s; user-select: none; border: none;
+}
+.orb:hover { transform: scale(1.05); }
+
+/* Orb states */
+.orb-wrapper.listening .orb {
+  background: radial-gradient(circle at 38% 35%, #fc8181, #e53e3e 60%, #9b2c2c);
+  box-shadow: 0 0 50px rgba(245,101,101,.45);
+  animation: orb-pulse 1s ease-in-out infinite;
+}
+.orb-wrapper.listening .orb-ring {
+  border-color: rgba(245,101,101,.3);
+  animation: ring-expand 1.6s ease-out infinite;
+}
+.orb-wrapper.listening .orb-ring:nth-child(2) { animation-delay: .5s; }
+.orb-wrapper.listening .orb-ring:nth-child(3) { animation-delay: 1s; }
+
+.orb-wrapper.thinking .orb {
+  background: radial-gradient(circle at 38% 35%, #fbd38d, #d97706 60%, #92400e);
+  box-shadow: 0 0 50px rgba(246,173,85,.4);
+  animation: orb-glow 1.5s linear infinite;
+}
+
+.orb-wrapper.speaking .orb {
+  background: radial-gradient(circle at 38% 35%, #b794f4, #6b46c1 60%, #44337a);
+  box-shadow: 0 0 55px rgba(159,122,234,.5);
+  animation: orb-speak .7s ease-in-out infinite alternate;
+}
+.orb-wrapper.speaking .orb-ring {
+  border-color: rgba(159,122,234,.3);
+  animation: ring-expand 1.2s ease-out infinite;
+}
+.orb-wrapper.speaking .orb-ring:nth-child(2) { animation-delay: .4s; }
+.orb-wrapper.speaking .orb-ring:nth-child(3) { animation-delay: .8s; }
+
+@keyframes orb-breathe {
+  0%,100% { transform: scale(1);    box-shadow: 0 0 40px rgba(20,241,149,.3); }
+  50%     { transform: scale(1.04); box-shadow: 0 0 65px rgba(20,241,149,.5); }
+}
+@keyframes orb-pulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.06); }
+}
+@keyframes orb-speak {
+  from { transform: scale(1); }
+  to   { transform: scale(1.07); }
+}
+@keyframes orb-glow {
+  0%   { box-shadow: 0 0 40px rgba(246,173,85,.35); }
+  50%  { box-shadow: 0 0 70px rgba(246,173,85,.6); }
+  100% { box-shadow: 0 0 40px rgba(246,173,85,.35); }
+}
+@keyframes ring-expand {
+  0%   { width:100px; height:100px; top:10px; left:10px; opacity:.6; }
+  100% { width:200px; height:200px; top:-40px; left:-40px; opacity:0; }
+}
+
+/* Status */
+.va-status {
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--clr-text-dim); transition: color .3s;
+}
+.va-status.listening { color: #f56565; }
+.va-status.thinking  { color: #f6ad55; }
+.va-status.speaking  { color: #9f7aea; }
+.va-status.ready     { color: #14f195; }
+
+/* Control buttons */
+.va-ctrl-btns { display: flex; flex-direction: column; gap: .4rem; width: 100%; }
+.va-ctrl-btn {
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  border: none; border-radius: 12px; cursor: pointer; font-weight: 600;
+  font-size: .78rem; padding: .55rem .8rem; transition: all .2s; width: 100%;
+}
+.va-ctrl-btn.mic-btn {
+  background: linear-gradient(135deg, #14f195, #0d9e63); color: #0a0f1e;
+}
+.va-ctrl-btn.mic-btn:hover { opacity: .88; transform: translateY(-1px); }
+.va-ctrl-btn.mic-btn.active {
+  background: linear-gradient(135deg, #f56565, #e53e3e); color: #fff;
+  animation: btn-pulse .8s ease-in-out infinite;
+}
+@keyframes btn-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,101,101,.4); }
+  50%     { box-shadow: 0 0 0 8px rgba(245,101,101,0); }
+}
+.va-ctrl-btn.speak-btn {
+  background: rgba(159,122,234,.12); border: 1px solid rgba(159,122,234,.2); color: #9f7aea;
+}
+.va-ctrl-btn.speak-btn:hover { background: rgba(159,122,234,.25); }
+.va-ctrl-btn.speak-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Doc selector */
+.va-doc-wrap { width: 100%; }
+.va-doc-wrap label {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--clr-text-dim); display: block; margin-bottom: .3rem;
+}
+.va-doc-select {
+  width: 100%; background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  color: var(--clr-text); font-size: .78rem; padding: .4rem .6rem; cursor: pointer;
+}
+.va-doc-select:focus { border-color: rgba(20,241,149,.3); outline: none; }
+.va-doc-select option { background: #1a2035; }
+
+/* ── Conversation column ── */
+.va-conv-col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.va-conv-log {
+  flex: 1; overflow-y: auto; padding: 1rem 1.25rem; scroll-behavior: smooth;
+}
+.va-conv-log::-webkit-scrollbar { width: 4px; }
+.va-conv-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+/* Bubbles */
+.va-row {
+  display: flex; gap: .6rem; margin-bottom: .8rem;
+  opacity: 0; transform: translateY(10px);
+  animation: fadein .3s ease forwards;
+}
+@keyframes fadein { to { opacity:1; transform:translateY(0); } }
+.va-row.user { flex-direction: row-reverse; }
+.va-av {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 700;
+}
+.va-av.ai  { background: linear-gradient(135deg,#14f195,#0d9e63); color:#0a0f1e; }
+.va-av.usr { background: rgba(255,255,255,.1); color: var(--clr-text); }
+.va-bub {
+  max-width: 78%; padding: .6rem .9rem; border-radius: 14px;
+  font-size: .86rem; line-height: 1.55; white-space: pre-wrap;
+}
+.va-bub.ai {
+  background: rgba(20,241,149,.06); border: 1px solid rgba(20,241,149,.12);
+  color: var(--clr-text); border-bottom-left-radius: 4px;
+}
+.va-bub.usr {
+  background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.18);
+  color: var(--clr-text); border-bottom-right-radius: 4px;
+}
+.va-meta {
+  font-size: .62rem; color: var(--clr-text-dim); margin-top: .25rem;
+  display: flex; align-items: center; gap: .3rem;
+}
+.va-meta button {
+  background: none; border: none; color: var(--clr-text-dim);
+  cursor: pointer; font-size: .68rem; padding: 0; opacity: 0; transition: opacity .15s;
+}
+.va-bub-wrap:hover .va-meta button { opacity: 1; }
+.va-meta button:hover { color: #9f7aea; }
+
+/* Typing dots */
+.va-dots span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #14f195; margin: 0 2px; opacity: .4;
+  animation: dotbounce .9s ease-in-out infinite;
+}
+.va-dots span:nth-child(2) { animation-delay: .15s; }
+.va-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes dotbounce {
+  0%,80%,100% { transform:scale(1); opacity:.4; }
+  40%         { transform:scale(1.4); opacity:1; }
+}
+
+/* Welcome */
+.va-welcome {
+  text-align: center; padding: 2.5rem 1rem; color: var(--clr-text-dim);
+  display: flex; flex-direction: column; align-items: center; gap: .6rem;
+}
+.va-welcome .w-icon { font-size: 2.2rem; opacity: .3; }
+.va-welcome h3 { font-size: 1rem; color: var(--clr-text-muted); margin: 0; }
+.va-welcome p  { font-size: .82rem; margin: 0; max-width: 320px; }
+
+/* ── Bottom: Quick actions + input ── */
+.va-bottom { border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+.va-quick-actions {
+  display: flex; flex-wrap: wrap; gap: .35rem;
+  padding: .55rem 1.25rem .4rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.va-qbtn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 50px; padding: .3rem .85rem;
+  font-size: .72rem; color: var(--clr-text-muted); cursor: pointer;
+  transition: all .2s; white-space: nowrap;
+}
+.va-qbtn:hover {
+  background: rgba(20,241,149,.1); border-color: rgba(20,241,149,.25);
+  color: #14f195; transform: translateY(-1px);
+}
+.va-qbtn i { font-size: .76rem; }
+
+/* Input row */
+.va-input-row {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .55rem 1.25rem .7rem;
+}
+.va-text-input {
+  flex: 1; background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
+  color: var(--clr-text); padding: .55rem .9rem; font-size: .88rem;
+  transition: border-color .2s;
+}
+.va-text-input:focus {
+  border-color: rgba(20,241,149,.35); outline: none;
+  box-shadow: 0 0 0 3px rgba(20,241,149,.07);
+}
+.va-text-input::placeholder { color: var(--clr-text-dim); }
+.va-send-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: linear-gradient(135deg,#14f195,#0d9e63);
+  color: #0a0f1e; font-weight: 700; border: none; border-radius: 12px;
+  padding: .55rem 1rem; cursor: pointer; font-size: .82rem;
+  transition: opacity .2s; flex-shrink: 0;
+}
+.va-send-btn:hover { opacity: .88; }
+.va-send-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Error bar */
+#vaErrBar {
+  display: none; margin: 0 1.25rem .35rem;
+  background: rgba(245,101,101,.1); border: 1px solid rgba(245,101,101,.22);
+  border-radius: 8px; padding: .3rem .8rem; color: #f56565; font-size: .76rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .va-centre { grid-template-columns: 1fr; }
+  .va-orb-col {
+    flex-direction: row; flex-wrap: wrap; justify-content: center;
+    border-right: none; border-bottom: 1px solid rgba(255,255,255,.06);
+    padding: .6rem 1rem; gap: .6rem;
+  }
+  .orb-wrapper { width: 68px; height: 68px; }
+  .orb { width: 60px; height: 60px; font-size: 1.3rem; }
+  .va-ctrl-btns { flex-direction: row; width: auto; }
+  .va-ctrl-btn { padding: .45rem .65rem; font-size: .72rem; }
+  .va-doc-wrap { width: 140px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Data store for JS -->
+<div id="vaData"
+  data-session-id="{{ voice_session.id }}"
+  data-user-initial="{{ request.user.username|slice:':1'|upper }}"
+  data-csrf="{{ csrf_token }}"
+  hidden aria-hidden="true"></div>
+
+<div class="va-shell" id="vaShell">
+
+  <!-- Header -->
+  <header class="va-header">
+    <div class="va-greeting">
+      <h1>Hello, {{ user_name }} 👋</h1>
+      <p id="vaHeaderSub">
+        {% if chat_messages %}
+        {{ chat_messages|length }} message{{ chat_messages|length|pluralize }} in this session
+        {% else %}
+        What can I help you with today?
+        {% endif %}
+      </p>
+    </div>
+    <div class="va-header-actions">
+      <a href="{% url 'assistant:chat_home' %}" class="va-icon-btn" title="Chat">
+        <i class="bi bi-chat-dots"></i>
+      </a>
+      <a href="{% url 'assistant:document_list' %}" class="va-icon-btn" title="Vault">
+        <i class="bi bi-folder2-open"></i>
+      </a>
+      <a href="{% url 'assistant:voice_settings' %}" class="va-icon-btn" title="Voice Settings">
+        <i class="bi bi-gear"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- Centre -->
+  <div class="va-centre">
+
+    <!-- Orb column -->
+    <aside class="va-orb-col">
+      <div class="orb-wrapper" id="orbWrapper">
+        <div class="orb-ring" style="width:100px;height:100px;top:10px;left:10px;"></div>
+        <div class="orb-ring" style="width:100px;height:100px;top:10px;left:10px;"></div>
+        <div class="orb-ring" style="width:100px;height:100px;top:10px;left:10px;"></div>
+        <button class="orb" id="vaOrb" title="Click to listen">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </button>
+      </div>
+
+      <p class="va-status ready" id="vaStatus">Ready</p>
+
+      <div class="va-ctrl-btns">
+        <button class="va-ctrl-btn mic-btn" id="vaMicBtn" title="Ctrl+M">
+          <i class="bi bi-mic-fill"></i>
+          <span id="vaMicLabel">Start Listening</span>
+        </button>
+        <button class="va-ctrl-btn speak-btn" id="vaSpeakLastBtn"
+          {% if not chat_messages %}disabled{% endif %}
+          title="Re-read last response">
+          <i class="bi bi-volume-up-fill"></i> Speak Last
+        </button>
+      </div>
+
+      {% if documents %}
+      <div class="va-doc-wrap">
+        <label for="vaDocSelect"><i class="bi bi-paperclip"></i> Active Document</label>
+        <select id="vaDocSelect" class="va-doc-select">
+          <option value="">None selected</option>
+          {% for doc in documents %}
+          <option value="{{ doc.id }}">{{ doc.file_type|upper }} — {{ doc.title|truncatechars:28 }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </aside>
+
+    <!-- Conversation -->
+    <section class="va-conv-col">
+      <div class="va-conv-log" id="vaConvLog" role="log">
+
+        {% if chat_messages %}
+          {% for msg in chat_messages %}
+          <div class="va-row {% if msg.role == 'user' %}user{% else %}ai{% endif %}" id="va-msg-{{ msg.id }}">
+            <div class="va-av {% if msg.role == 'user' %}usr{% else %}ai{% endif %}">
+              {% if msg.role == 'user' %}{{ request.user.username|slice:":1"|upper }}{% else %}<i class="bi bi-lightning-charge-fill"></i>{% endif %}
+            </div>
+            <div class="va-bub-wrap">
+              <div class="va-bub {% if msg.role == 'user' %}usr{% else %}ai{% endif %}">{{ msg.content }}</div>
+              <div class="va-meta">
+                <span>{{ msg.created_at|date:"g:i a" }}</span>
+                {% if msg.role == 'assistant' %}
+                <button class="msg-speak-btn" data-text="{{ msg.content|escapejs }}" title="Speak">
+                  <i class="bi bi-volume-up"></i>
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="va-welcome" id="vaWelcome">
+            <i class="bi bi-mic-fill w-icon"></i>
+            <h3>Speak or type to begin</h3>
+            <p>Click the orb, press <kbd>Ctrl+M</kbd>, or use the quick actions below to start.</p>
+          </div>
+        {% endif %}
+
+        <!-- Typing indicator (hidden) -->
+        <div class="va-row ai" id="vaTyping" style="display:none;">
+          <div class="va-av ai"><i class="bi bi-lightning-charge-fill"></i></div>
+          <div class="va-bub-wrap">
+            <div class="va-bub ai">
+              <div class="va-dots"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- Bottom: Quick actions + input -->
+  <div class="va-bottom">
+    <div class="va-quick-actions">
+      <button class="va-qbtn js-quick" data-prompt="Write a professional email for me">
+        <i class="bi bi-envelope-fill"></i> Write Email
+      </button>
+      <button class="va-qbtn js-quick" data-prompt="Review my resume and provide detailed feedback with suggestions">
+        <i class="bi bi-file-person-fill"></i> Review Resume
+      </button>
+      <button class="va-qbtn js-quick" data-prompt="Create 10 software engineering interview questions with answers">
+        <i class="bi bi-briefcase-fill"></i> Interview Prep
+      </button>
+      <button class="va-qbtn js-quick" data-prompt="Create a productive and balanced daily plan for today">
+        <i class="bi bi-calendar-check-fill"></i> Daily Plan
+      </button>
+      <button class="va-qbtn js-quick" data-prompt="Summarise the document I have selected">
+        <i class="bi bi-file-earmark-text-fill"></i> Summarise PDF
+      </button>
+      <button class="va-qbtn js-quick" data-prompt="Explain Python in a simple and engaging way with examples">
+        <i class="bi bi-code-slash"></i> Explain Python
+      </button>
+    </div>
+
+    <div id="vaErrBar" role="alert"></div>
+
+    <div class="va-input-row">
+      <input type="text" id="vaTextInput" class="va-text-input"
+        placeholder="Type a message or press Ctrl+M to speak..." maxlength="4000" />
+      <button id="vaSendBtn" class="va-send-btn" disabled>
+        <i class="bi bi-send-fill"></i> Send
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+/* Voice Assistant Page JS */
+(function () {
+  'use strict';
+
+  var dataEl = document.getElementById('vaData');
+  if (!dataEl) return;
+
+  /* Register transcript hook so voice.js routes speech here instead of chat form */
+  window.onJarvisTranscript = function (text) { VA.send(text); };
+
+  var VA = window.VA = {
+    sessionId:   parseInt(dataEl.dataset.sessionId, 10) || 0,
+    csrf:        dataEl.dataset.csrf || '',
+    userInitial: dataEl.dataset.userInitial || '?',
+
+    send: function (text) {
+      var content = (text || '').trim();
+      if (!content) return;
+
+      var inp = document.getElementById('vaTextInput');
+      if (inp) inp.value = '';
+      var sendBtn = document.getElementById('vaSendBtn');
+      if (sendBtn) sendBtn.disabled = true;
+
+      var welcome = document.getElementById('vaWelcome');
+      if (welcome) welcome.remove();
+
+      this.addBubble('user', content, this.timeNow());
+      this.setOrb('thinking');
+      document.getElementById('vaTyping').style.display = 'flex';
+      this.scroll();
+
+      var docSel = document.getElementById('vaDocSelect');
+      var docId  = docSel ? (docSel.value || null) : null;
+      var self   = this;
+
+      fetch('/voice/send/', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': self.csrf },
+        body:    JSON.stringify({ content: content, session_id: self.sessionId, doc_id: docId })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        document.getElementById('vaTyping').style.display = 'none';
+        if (data.status === 'ok') {
+          self.addBubble('ai', data.ai_message.content, data.ai_message.created_at);
+          self.setOrb('speaking');
+          if (window.JarvisVoice) window.JarvisVoice.speakForce(data.ai_message.content);
+          var speakBtn = document.getElementById('vaSpeakLastBtn');
+          if (speakBtn) speakBtn.disabled = false;
+          var sub = document.getElementById('vaHeaderSub');
+          if (sub) sub.textContent = 'Jarvis replied just now';
+        } else {
+          self.showErr(data.message || 'Something went wrong.');
+          self.setOrb('ready');
+        }
+      })
+      .catch(function () {
+        document.getElementById('vaTyping').style.display = 'none';
+        self.showErr('Network error. Check your connection.');
+        self.setOrb('ready');
+      });
+    },
+
+    addBubble: function (role, content, time) {
+      var isUser = role === 'user';
+      var row = document.createElement('div');
+      row.className = 'va-row ' + (isUser ? 'user' : 'ai');
+
+      var avClass = isUser ? 'usr' : 'ai';
+      var avInner = isUser ? this.userInitial : '<i class="bi bi-lightning-charge-fill"></i>';
+
+      var safe = content
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+
+      var speakBtn = '';
+      if (!isUser) {
+        speakBtn = '<button class="msg-speak-btn" data-text="' +
+          content.replace(/"/g, '&quot;') +
+          '" title="Speak"><i class="bi bi-volume-up"></i></button>';
+      }
+
+      row.innerHTML =
+        '<div class="va-av ' + avClass + '">' + avInner + '</div>' +
+        '<div class="va-bub-wrap">' +
+          '<div class="va-bub ' + avClass + '">' + safe + '</div>' +
+          '<div class="va-meta"><span>' + time + '</span>' + speakBtn + '</div>' +
+        '</div>';
+
+      var log    = document.getElementById('vaConvLog');
+      var typing = document.getElementById('vaTyping');
+      log.insertBefore(row, typing);
+      this.scroll();
+    },
+
+    setOrb: function (state) {
+      var wrapper  = document.getElementById('orbWrapper');
+      var statusEl = document.getElementById('vaStatus');
+      var micBtn   = document.getElementById('vaMicBtn');
+      var label    = document.getElementById('vaMicLabel');
+      var icon     = micBtn ? micBtn.querySelector('i') : null;
+
+      wrapper.classList.remove('listening', 'thinking', 'speaking');
+      if (state !== 'ready') wrapper.classList.add(state);
+
+      var labels = { ready: 'Ready', listening: 'Listening\u2026', thinking: 'Thinking\u2026', speaking: 'Speaking\u2026' };
+      statusEl.className = 'va-status ' + state;
+      statusEl.textContent = labels[state] || 'Ready';
+
+      if (state === 'listening') {
+        if (micBtn) micBtn.classList.add('active');
+        if (label) label.textContent = 'Stop Listening';
+        if (icon) icon.className = 'bi bi-stop-circle-fill';
+      } else {
+        if (micBtn) micBtn.classList.remove('active');
+        if (label) label.textContent = 'Start Listening';
+        if (icon) icon.className = 'bi bi-mic-fill';
+      }
+    },
+
+    scroll: function () {
+      var log = document.getElementById('vaConvLog');
+      if (log) log.scrollTop = log.scrollHeight;
+    },
+
+    showErr: function (msg) {
+      var bar = document.getElementById('vaErrBar');
+      if (!bar) return;
+      bar.textContent = msg;
+      bar.style.display = 'block';
+      setTimeout(function () { bar.style.display = 'none'; }, 5000);
+    },
+
+    timeNow: function () {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  /* Event wiring */
+  document.addEventListener('DOMContentLoaded', function () {
+    var inp     = document.getElementById('vaTextInput');
+    var sendBtn = document.getElementById('vaSendBtn');
+
+    if (inp && sendBtn) {
+      inp.addEventListener('input', function () {
+        sendBtn.disabled = inp.value.trim().length === 0;
+      });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (!sendBtn.disabled) VA.send(inp.value);
+        }
+      });
+      sendBtn.addEventListener('click', function () { VA.send(inp.value); });
+    }
+
+    /* Quick action chips */
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-quick');
+      if (btn) VA.send(btn.dataset.prompt);
+    });
+
+    /* Mic + Orb toggle */
+    function toggleListen() {
+      var jv = window.JarvisVoice;
+      if (!jv) { VA.showErr('Voice engine not loaded. Refresh the page.'); return; }
+      if (jv.isListening) { jv.stopListening(); VA.setOrb('ready'); }
+      else { VA.setOrb('listening'); jv.startListening(); }
+    }
+    var micBtn = document.getElementById('vaMicBtn');
+    var orbBtn = document.getElementById('vaOrb');
+    if (micBtn) micBtn.addEventListener('click', toggleListen);
+    if (orbBtn) orbBtn.addEventListener('click', toggleListen);
+
+    /* Speak Last */
+    var speakLast = document.getElementById('vaSpeakLastBtn');
+    if (speakLast) {
+      speakLast.addEventListener('click', function () {
+        var bubbles = document.querySelectorAll('.va-bub.ai');
+        if (bubbles.length) {
+          VA.setOrb('speaking');
+          if (window.JarvisVoice) window.JarvisVoice.speakForce(bubbles[bubbles.length - 1].innerText);
+        }
+      });
+    }
+
+    /* Speak individual bubbles via delegation */
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.msg-speak-btn');
+      if (!btn) return;
+      VA.setOrb('speaking');
+      if (window.JarvisVoice) window.JarvisVoice.speakForce(btn.dataset.text);
+    });
+
+    /* Keep orb in sync with voice.js state */
+    setInterval(function () {
+      var jv = window.JarvisVoice;
+      if (!jv) return;
+      if (jv.isListening) { VA.setOrb('listening'); return; }
+      if (jv.isSpeaking)  { VA.setOrb('speaking');  return; }
+      var cur = (document.getElementById('vaStatus') || {}).textContent || '';
+      if (cur === 'Speaking\u2026' || cur === 'Listening\u2026') VA.setOrb('ready');
+    }, 600);
+
+    VA.scroll();
+  });
+})();
+</script>
+<script src="{% static 'js/voice.js' %}"></script>
+{% endblock %}

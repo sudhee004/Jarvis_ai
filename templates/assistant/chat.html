@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chat.css' %}" />
+<style>
+  /* ----------------------------------------------------------------
+     Chat page overrides — override base layout for full-height split
+  ---------------------------------------------------------------- */
+  body { overflow: hidden; }
+  #main-content { height: calc(100vh - 62px); display: flex; flex-direction: column; overflow: hidden; }
+  .jarvis-footer { display: none; }
+
+  /* ----------------------------------------------------------------
+     Voice controls — Day 7
+  ---------------------------------------------------------------- */
+  /* Auto-speak toggle in header */
+  .voice-header-controls {
+    display: flex; align-items: center; gap: .5rem; margin-left: auto;
+  }
+  .auto-speak-label {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .75rem; color: var(--clr-text-muted); cursor: pointer;
+    user-select: none;
+  }
+  .auto-speak-label input { accent-color: #14f195; width: 1rem; height: 1rem; cursor: pointer; }
+  #stopSpeakBtn {
+    display: none;
+    align-items: center; gap: .3rem;
+    background: rgba(245,101,101,.15); border: 1px solid rgba(245,101,101,.3);
+    color: #f56565; border-radius: 8px; padding: .3rem .7rem;
+    font-size: .78rem; cursor: pointer; transition: background .2s;
+  }
+  #stopSpeakBtn:hover { background: rgba(245,101,101,.28); }
+
+  /* Mic button */
+  #micBtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+    color: var(--clr-text-muted); cursor: pointer; transition: all .2s;
+  }
+  #micBtn:hover  { background: rgba(20,241,149,.12); border-color: rgba(20,241,149,.3); color: #14f195; }
+  #micBtn.listening {
+    background: rgba(245,101,101,.18); border-color: rgba(245,101,101,.4);
+    color: #f56565;
+    animation: mic-pulse 1s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(245,101,101,.4); }
+    50%      { box-shadow: 0 0 0 8px rgba(245,101,101,0); }
+  }
+
+  /* Voice status bar */
+  #voiceStatusBar {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .25rem .5rem; font-size: .73rem;
+    min-height: 20px;
+  }
+  .status-listening, .status-speaking {
+    display: none; align-items: center; gap: .3rem;
+    font-weight: 500;
+  }
+  .status-listening.active { display: inline-flex; color: #f56565; }
+  .status-speaking.active  { display: inline-flex; color: #14f195; }
+  .status-listening.active i, .status-speaking.active i { animation: blink .9s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Per-message speak button */
+  .msg-speak-btn {
+    display: inline-flex; align-items: center; gap: .2rem;
+    background: none; border: none; cursor: pointer;
+    color: var(--clr-text-dim); font-size: .72rem;
+    padding: .1rem .3rem; border-radius: 5px; transition: color .15s;
+    opacity: 0; transition: opacity .2s;
+  }
+  .message-wrap:hover .msg-speak-btn { opacity: 1; }
+  .msg-speak-btn:hover { color: #14f195; }
+
+  /* Error bar */
+  #voiceErrorBar {
+    display: none;
+    background: rgba(245,101,101,.15); border: 1px solid rgba(245,101,101,.3);
+    border-radius: 8px; padding: .4rem .9rem;
+    color: #f56565; font-size: .8rem; margin: 0 .5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- {# ================================================================
+CSRF token stored in a meta tag for JS fetch calls
+================================================================ #} -->
+<meta name="csrf-token" content="{{ csrf_token }}" />
+
+<div class="chat-layout" id="chatLayout">
+
+  <!-- ==============================================================
+       LEFT SIDEBAR
+  ============================================================== -->
+  <aside class="chat-sidebar" id="chatSidebar" aria-label="Chat sessions">
+
+    <!-- Sidebar header -->
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+        <span>Jarvis AI</span>
+      </div>
+      <!-- Collapse toggle (mobile) -->
+      <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Close sidebar" title="Toggle sidebar">
+        <i class="bi bi-layout-sidebar-reverse"></i>
+      </button>
+    </div>
+
+    <!-- New Chat button -->
+    <form method="post" action="{% url 'assistant:new_chat' %}" class="sidebar-new-chat-form" id="newChatForm">
+      {% csrf_token %}
+      <button type="submit" class="btn-new-chat" id="newChatBtn" aria-label="Start a new chat session">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        New Chat
+      </button>
+    </form>
+
+    <!-- Sessions label -->
+    <p class="sessions-label" aria-label="Recent conversations">
+      <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+      Recent Conversations
+    </p>
+
+    <!-- Sessions list -->
+    <nav class="sessions-list" id="sessionsList" aria-label="Conversation list">
+      {% if sessions %}
+      {% for session in sessions %}
+      <div class="session-item {% if active_session and active_session.id == session.id %}active{% endif %}"
+        id="session-item-{{ session.id }}" role="listitem">
+        <a href="{% url 'assistant:chat_session' session.id %}" class="session-link"
+          aria-label="Open: {{ session.title }}"
+          aria-current="{% if active_session and active_session.id == session.id %}page{% else %}false{% endif %}">
+          <i class="bi bi-chat-dots session-icon" aria-hidden="true"></i>
+          <div class="session-info">
+            <span class="session-title">{{ session.title|truncatechars:30 }}</span>
+            <span class="session-date">
+              {% if session.last_message_at %}
+              {{ session.last_message_at|date:"M j, g:i a" }}
+              {% else %}
+              {{ session.created_at|date:"M j, g:i a" }}
+              {% endif %}
+            </span>
+          </div>
+        </a>
+        <!-- Delete button -->
+        {% if active_session and active_session.id == session.id %}
+        <button class="session-delete-btn" data-session-id="{{ session.id }}" aria-label="Delete this conversation"
+          title="Delete conversation" onclick="deleteSession('{{ session.id }}', event)">
+          <i class="bi bi-trash3" aria-hidden="true"></i>
+        </button>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="sessions-empty">
+        <i class="bi bi-chat-square-dots" aria-hidden="true"></i>
+        <p>No conversations yet.<br />Click <strong>New Chat</strong> to begin.</p>
+      </div>
+      {% endif %}
+    </nav>
+
+    <!-- Sidebar footer -->
+    <div class="sidebar-footer">
+      <a href="{% url 'assistant:dashboard' %}" class="sidebar-footer-link" aria-label="Go to dashboard">
+        <i class="bi bi-speedometer2" aria-hidden="true"></i>
+        Dashboard
+      </a>
+      <a href="{% url 'assistant:logout' %}" class="sidebar-footer-link" aria-label="Log out">
+        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+        Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ==============================================================
+       MAIN CHAT AREA
+  ============================================================== -->
+  <main class="chat-main" id="chatMain" role="main" aria-label="Chat interface">
+
+    {% if active_session %}
+
+    <!-- ---- Chat Header ---- -->
+    <header class="chat-header" aria-label="Chat header">
+      <!-- Mobile sidebar toggle -->
+      <button class="chat-header-toggle" id="chatHeaderToggle" aria-label="Toggle sidebar" onclick="toggleSidebar()">
+        <i class="bi bi-layout-sidebar"></i>
+      </button>
+
+      <div class="chat-header-info">
+        <div class="chat-header-avatar" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        <div>
+          <h1 class="chat-header-title">Jarvis AI Assistant</h1>
+          <p class="chat-header-status">
+            <span class="status-dot" aria-hidden="true"></span>
+            Online &mdash; Ready to help
+          </p>
+        </div>
+      </div>
+
+      <div class="chat-header-meta d-flex align-items-center gap-2">
+        <span class="chat-session-title-badge" title="{{ active_session.title }}">
+          {{ active_session.title|truncatechars:24 }}
+        </span>
+
+        <!-- Voice header controls -->
+        <div class="voice-header-controls" id="voiceHeaderControls">
+          <button id="stopSpeakBtn" title="Stop speaking" aria-label="Stop Jarvis speaking">
+            <i class="bi bi-stop-fill" aria-hidden="true"></i> Stop
+          </button>
+          <label class="auto-speak-label" title="Toggle auto-speak">
+            <input type="checkbox" class="js-auto-speak-toggle" id="autoSpeakToggle" aria-label="Auto-speak" />
+            <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
+          </label>
+          <a href="{% url 'assistant:voice_settings' %}" class="auto-speak-label"
+            title="Voice Settings" aria-label="Open voice settings">
+            <i class="bi bi-gear" aria-hidden="true"></i>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ---- Messages Area ---- -->
+    <section class="chat-messages-area" id="chatMessagesArea" aria-label="Conversation messages" aria-live="polite">
+
+      {% if chat_messages %}
+      {% for msg in chat_messages %}
+      <div class="message-row {% if msg.role == 'user' %}user-row{% else %}ai-row{% endif %}" id="msg-{{ msg.id }}">
+        {% if msg.role == 'assistant' %}
+        <!-- AI avatar -->
+        <div class="msg-avatar ai-avatar" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        {% endif %}
+
+        <div class="message-wrap">
+          <div class="message-bubble {% if msg.role == 'user' %}user-bubble{% else %}ai-bubble{% endif %}">
+            {{ msg.content|linebreaksbr }}
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="message-time">
+              {% if msg.role == 'user' %}
+              <i class="bi bi-person-fill me-1" aria-hidden="true"></i>You
+              {% else %}
+              <i class="bi bi-lightning-charge-fill me-1" aria-hidden="true"></i>Jarvis
+              {% endif %}
+              &bull; {{ msg.created_at|date:"g:i a" }}
+            </span>
+            {% if msg.role == 'assistant' %}
+            <button class="msg-speak-btn"
+              data-text="{{ msg.content|escapejs }}"
+              title="Speak this message" aria-label="Speak message">
+              <i class="bi bi-volume-up" aria-hidden="true"></i>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if msg.role == 'user' %}
+        <!-- User avatar -->
+        <div class="msg-avatar user-avatar" aria-hidden="true">
+          {{ request.user.username|slice:":1"|upper }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% else %}
+      <!-- Empty-session welcome card -->
+      <div class="chat-welcome" id="chatWelcome" aria-label="Welcome to this conversation">
+        <div class="welcome-icon" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        <h2 class="welcome-title">Hello, {{ request.user.username }}! 👋</h2>
+        <p class="welcome-sub">
+          I'm Jarvis, your AI assistant. Type a message below to get started.
+        </p>
+        <div class="welcome-suggestions" aria-label="Suggested prompts">
+          <button class="suggest-btn" onclick="fillInput('What can you help me with?')">
+            <i class="bi bi-question-circle me-1"></i>What can you help me with?
+          </button>
+          <button class="suggest-btn" onclick="fillInput('Give me a productivity tip for today.')">
+            <i class="bi bi-lightbulb me-1"></i>Give me a productivity tip
+          </button>
+          <button class="suggest-btn" onclick="fillInput('Summarise my tasks for today.')">
+            <i class="bi bi-list-check me-1"></i>Summarise my tasks
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Typing indicator (hidden by default, shown during AI "thinking") -->
+      <div class="message-row ai-row" id="typingIndicator" style="display:none;" aria-live="polite"
+        aria-label="Jarvis is typing">
+        <div class="msg-avatar ai-avatar" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        <div class="message-wrap">
+          <div class="message-bubble ai-bubble typing-bubble">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <span class="message-time">
+            <i class="bi bi-lightning-charge-fill me-1" aria-hidden="true"></i>Jarvis is thinking…
+          </span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ---- Message Input Area ---- -->
+    <footer class="chat-input-area" id="chatInputArea" aria-label="Message input">
+      <form id="messageForm" class="message-form" autocomplete="off" aria-label="Send a message to Jarvis">
+        {% csrf_token %}
+        <div class="input-row">
+          <textarea id="messageInput" name="content" class="message-textarea" placeholder="Message Jarvis… or press Ctrl+M to speak" rows="1"
+            maxlength="4000" aria-label="Type your message" aria-multiline="true"></textarea>
+          <!-- Mic button -->
+          <button type="button" id="micBtn"
+            aria-label="Voice input (Ctrl+M)" aria-pressed="false"
+            title="Start voice input (Ctrl+M)">
+            <i class="bi bi-mic-fill" aria-hidden="true"></i>
+          </button>
+          <button type="submit" class="send-btn" id="sendBtn" aria-label="Send message" title="Send (Enter)" disabled>
+            <i class="bi bi-send-fill" aria-hidden="true"></i>
+          </button>
+        </div>
+        <!-- Voice status bar -->
+        <div id="voiceStatusBar" aria-live="polite" aria-atomic="true">
+          <span class="status-listening">
+            <i class="bi bi-record-circle-fill" aria-hidden="true"></i> Listening…
+          </span>
+          <span class="status-speaking">
+            <i class="bi bi-volume-up-fill" aria-hidden="true"></i> Jarvis is speaking…
+          </span>
+        </div>
+        <div id="voiceErrorBar" role="alert"></div>
+        <p class="input-hint" id="charCount">
+          <kbd>Enter</kbd> to send &bull; <kbd>Shift+Enter</kbd> for new line
+          &bull; <kbd>Ctrl+M</kbd> voice
+          &bull; <span id="charCounter">0</span>/4000
+        </p>
+      </form>
+    </footer>
+
+    {% else %}
+    <!-- ==== NO SESSION / EMPTY STATE ==== -->
+    <div class="chat-empty-state" id="chatEmptyState">
+      <div class="empty-icon" aria-hidden="true">
+        <i class="bi bi-chat-square-dots-fill"></i>
+      </div>
+      <h1 class="empty-title">Welcome to Jarvis Chat</h1>
+      <p class="empty-sub">
+        Start a new conversation and experience AI-powered assistance.
+      </p>
+      <form method="post" action="{% url 'assistant:new_chat' %}" class="mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary-jarvis" id="emptyNewChatBtn">
+          <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+          Start Your First Chat
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+  </main>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  /* ====================================================================
+     Jarvis Chat — Frontend Logic
+     - Auto-resize textarea
+     - Send message via fetch (AJAX)
+     - Append messages to DOM
+     - Auto-scroll to bottom
+     - Typing indicator animation
+     - Sidebar toggle (mobile)
+     - Delete session
+  ==================================================================== */
+
+  (function () {
+    'use strict';
+
+    /* ---------- Constants ---------- */
+    const SESSION_ID = "{{ active_session.id|default:'' }}" ? parseInt("{{ active_session.id|default:'' }}", 10) : null;
+    const SEND_URL = SESSION_ID ? `/chat/${SESSION_ID}/send/` : null;
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+
+    /* ---------- Elements ---------- */
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messagesArea = document.getElementById('chatMessagesArea');
+    const typingEl = document.getElementById('typingIndicator');
+    const charCounter = document.getElementById('charCounter');
+    const chatWelcome = document.getElementById('chatWelcome');
+
+    /* ---------- Auto-scroll ---------- */
+    function scrollToBottom(smooth = true) {
+      if (!messagesArea) return;
+      messagesArea.scrollTo({
+        top: messagesArea.scrollHeight,
+        behavior: smooth ? 'smooth' : 'instant',
+      });
+    }
+
+    /* Scroll immediately on load */
+    scrollToBottom(false);
+
+    /* ---------- Auto-resize textarea ---------- */
+    function resizeTextarea() {
+      if (!messageInput) return;
+      messageInput.style.height = 'auto';
+      const max = 160; // px
+      messageInput.style.height = Math.min(messageInput.scrollHeight, max) + 'px';
+    }
+
+    if (messageInput) {
+      messageInput.addEventListener('input', () => {
+        resizeTextarea();
+        const len = messageInput.value.trim().length;
+        if (charCounter) charCounter.textContent = messageInput.value.length;
+        if (sendBtn) sendBtn.disabled = len === 0;
+      });
+
+      /* Send on Enter (not Shift+Enter) */
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (!sendBtn.disabled) submitMessage();
+        }
+      });
+    }
+
+    /* ---------- Build a message bubble DOM node ---------- */
+    function buildMessageRow(data) {
+      const isUser = data.role === 'user';
+      const row = document.createElement('div');
+      row.className = `message-row ${isUser ? 'user-row' : 'ai-row'}`;
+      row.id = `msg-${data.id}`;
+
+      const userInitial = '{{ request.user.username|slice:":1"|upper }}';
+
+      if (!isUser) {
+        row.innerHTML += `
+        <div class="msg-avatar ai-avatar" aria-hidden="true">
+          <i class="bi bi-lightning-charge-fill"></i>
+        </div>`;
+      }
+
+      /* Convert newlines to <br> */
+      const safeContent = data.content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+
+      const speakBtn = !isUser
+        ? `<button class="msg-speak-btn" data-text="${data.content.replace(/"/g, '&quot;')}" title="Speak message" aria-label="Speak this message"><i class="bi bi-volume-up" aria-hidden="true"></i></button>`
+        : '';
+
+      row.innerHTML += `
+      <div class="message-wrap">
+        <div class="message-bubble ${isUser ? 'user-bubble' : 'ai-bubble'} msg-animate">
+          ${safeContent}
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="message-time">
+            <i class="bi ${isUser ? 'bi-person-fill' : 'bi-lightning-charge-fill'} me-1" aria-hidden="true"></i>
+            ${isUser ? 'You' : 'Jarvis'} &bull; ${data.created_at}
+          </span>
+          ${speakBtn}
+        </div>
+      </div>`;
+
+      if (isUser) {
+        row.innerHTML += `
+        <div class="msg-avatar user-avatar" aria-hidden="true">
+          ${userInitial}
+        </div>`;
+      }
+
+      return row;
+    }
+
+    /* ---------- Submit message ---------- */
+    async function submitMessage() {
+      if (!SEND_URL || !messageInput) return;
+
+      const content = messageInput.value.trim();
+      if (!content) return;
+
+      /* Disable UI */
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      if (charCounter) charCounter.textContent = '0';
+      if (sendBtn) sendBtn.disabled = true;
+      if (chatWelcome) chatWelcome.style.display = 'none';
+
+      /* Show typing indicator */
+      if (typingEl) {
+        typingEl.style.display = 'flex';
+        scrollToBottom();
+      }
+
+      try {
+        const res = await fetch(SEND_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN,
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'ok') {
+          /* Remove typing indicator */
+          if (typingEl) typingEl.style.display = 'none';
+
+          /* Append user + AI messages */
+          messagesArea.insertBefore(buildMessageRow(data.user_message), typingEl);
+          messagesArea.insertBefore(buildMessageRow(data.ai_message), typingEl);
+          scrollToBottom();
+
+          /* Trigger voice TTS for AI response */
+          if (window.JarvisVoice && data.ai_message) {
+            window.JarvisVoice.onAIResponse(data.ai_message.content);
+          }
+        } else {
+          throw new Error(data.message || 'Unknown error');
+        }
+
+      } catch (err) {
+        if (typingEl) typingEl.style.display = 'none';
+        console.error('Send failed:', err);
+
+        /* Restore input with original content */
+        if (messageInput) {
+          messageInput.value = content;
+          resizeTextarea();
+          if (sendBtn) sendBtn.disabled = false;
+        }
+
+        alert('Failed to send message. Please try again.');
+      }
+    }
+
+    /* Attach form submit handler */
+    if (messageForm) {
+      messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitMessage();
+      });
+    }
+
+    /* ---------- Fill suggested prompt ---------- */
+    window.fillInput = function (text) {
+      if (!messageInput) return;
+      messageInput.value = text;
+      resizeTextarea();
+      if (charCounter) charCounter.textContent = text.length;
+      if (sendBtn) sendBtn.disabled = false;
+      messageInput.focus();
+    };
+
+    /* ---------- Sidebar toggle (mobile) ---------- */
+    const sidebar = document.getElementById('chatSidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const headerToggle = document.getElementById('chatHeaderToggle');
+
+    window.toggleSidebar = function () {
+      if (!sidebar) return;
+      sidebar.classList.toggle('sidebar-open');
+    };
+
+    if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+    if (headerToggle) headerToggle.addEventListener('click', toggleSidebar);
+
+    /* ---------- Delete session ---------- */
+    window.deleteSession = async function (sessionId, event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!confirm('Delete this conversation? It cannot be undone.')) return;
+
+      try {
+        const res = await fetch(`/chat/${sessionId}/delete/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF_TOKEN },
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          window.location.href = data.redirect_url;
+        }
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Could not delete the conversation. Please try again.');
+      }
+    };
+
+    /* ---------- Focus input on load ---------- */
+    if (messageInput) {
+      setTimeout(() => messageInput.focus(), 100);
+    }
+
+  })();
+</script>
+
+<!-- Voice engine — loaded after chat JS so it can hook into window globals -->
+<script src="{% static 'js/voice.js' %}"></script>
+{% endblock %}

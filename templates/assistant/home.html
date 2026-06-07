@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block meta_description %}
+  Jarvis AI Assistant — your intelligent AI-powered productivity partner. Chat, voice control, smart notes, and personal memory — all in one place.
+{% endblock %}
+
+{% block content %}
+
+<!-- ================================================================
+     HERO SECTION
+================================================================ -->
+<section class="hero-section" id="hero" aria-labelledby="hero-heading">
+
+  <!-- Background orbs -->
+  <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+  <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
+
+  <div class="container">
+    <div class="row align-items-center g-5">
+
+      <!-- Left: Copy -->
+      <div class="col-lg-6">
+
+        <!-- Live badge -->
+        <div class="hero-badge" aria-label="Status: Now in development">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Now in Development &mdash; Day 1
+        </div>
+
+        <!-- Main heading -->
+        <h1 class="hero-title" id="hero-heading">
+          Meet <span class="text-gradient">Jarvis</span><br />
+          Your AI Assistant
+        </h1>
+
+        <!-- Subtitle -->
+        <p class="hero-subtitle">
+          Your Personal AI-Powered Productivity Assistant — crafted to handle your tasks, answer your questions, and amplify your potential.
+        </p>
+
+        <!-- CTA buttons -->
+        <div class="hero-cta">
+          <a
+            href="{% url 'assistant:register' %}"
+            class="btn-primary-jarvis"
+            id="hero-get-started"
+            aria-label="Get started with Jarvis AI"
+          >
+            <i class="bi bi-rocket-takeoff-fill" aria-hidden="true"></i>
+            Get Started &mdash; It's Free
+          </a>
+          <a
+            href="{% url 'assistant:about' %}"
+            class="btn-secondary-jarvis"
+            id="hero-learn-more"
+            aria-label="Learn more about Jarvis AI"
+          >
+            <i class="bi bi-play-circle" aria-hidden="true"></i>
+            Learn More
+          </a>
+        </div>
+
+        <!-- Stats strip -->
+        <div class="hero-stats" aria-label="Key statistics">
+          <div class="hero-stat">
+            <span class="stat-value">4+</span>
+            <span class="stat-label">Core Features</span>
+          </div>
+          <div class="hero-stat">
+            <span class="stat-value">100%</span>
+            <span class="stat-label">Free to Start</span>
+          </div>
+          <div class="hero-stat">
+            <span class="stat-value">24/7</span>
+            <span class="stat-label">AI Availability</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Animated chat mockup -->
+      <div class="col-lg-6">
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-card-mockup">
+
+            <!-- Mockup header bar -->
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57;"></div>
+              <div style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;"></div>
+              <div style="width:10px;height:10px;border-radius:50%;background:#28c840;"></div>
+              <span class="ms-2" style="font-size:0.78rem;color:var(--clr-text-dim);">Jarvis Chat &bull; Active</span>
+              <span class="ms-auto" style="width:8px;height:8px;border-radius:50%;background:#28c840;display:inline-block;box-shadow:0 0 8px #28c840;"></span>
+            </div>
+
+            <!-- Chat bubbles -->
+            <div class="chat-bubble user-bubble" style="animation-delay:0.1s">
+              <div class="bubble-label">You</div>
+              Hey Jarvis, summarise my day and set a 3 PM reminder for my team meeting.
+            </div>
+
+            <div class="chat-bubble ai-bubble" style="animation-delay:0.3s">
+              <div class="bubble-label">Jarvis</div>
+              Sure! You have 3 tasks pending, 2 emails to action, and a meeting at 3 PM. Reminder set &mdash; I'll notify you 10 minutes early. Anything else?
+            </div>
+
+            <div class="chat-bubble user-bubble" style="animation-delay:0.5s">
+              <div class="bubble-label">You</div>
+              Also add a note: "Review Q3 report before EOD".
+            </div>
+
+            <!-- Typing indicator -->
+            <div class="typing-indicator" aria-label="Jarvis is typing">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ================================================================
+     FEATURES SECTION
+================================================================ -->
+<section class="features-section" id="features" aria-labelledby="features-heading">
+  <div class="container">
+
+    <!-- Section header -->
+    <div class="text-center">
+      <div class="section-label">
+        <span>What Jarvis Can Do</span>
+      </div>
+      <h2 class="section-title" id="features-heading">
+        Everything You Need,<br /><span class="text-gradient">Powered by AI</span>
+      </h2>
+      <p class="section-subtitle">
+        Four intelligent pillars designed to transform how you work, communicate, and stay organised.
+      </p>
+    </div>
+
+    <!-- Feature cards grid -->
+    <div class="row g-4">
+      {% for feature in features %}
+      <div class="col-sm-6 col-lg-3">
+        <div class="feature-card {{ feature.color }}" id="feature-{{ feature.title|lower|slugify }}">
+          <div class="feature-icon-wrap" aria-hidden="true">
+            <i class="bi {{ feature.icon }}"></i>
+          </div>
+          <h3 class="feature-title">{{ feature.title }}</h3>
+          <p class="feature-desc">{{ feature.description }}</p>
+          <span class="feature-arrow" aria-hidden="true">
+            Explore <i class="bi bi-arrow-right"></i>
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ================================================================
+     CTA BANNER
+================================================================ -->
+<section class="cta-section" id="cta" aria-labelledby="cta-heading">
+  <div class="container">
+    <div class="cta-card">
+      <div class="section-label justify-content-center">
+        <span>Start Today</span>
+      </div>
+      <h2 class="cta-title" id="cta-heading">
+        Ready to Meet <span class="text-gradient">Jarvis</span>?
+      </h2>
+      <p class="cta-subtitle">
+        Join thousands of productive people who are already supercharging their daily workflow with Jarvis AI.
+      </p>
+      <div class="d-flex flex-wrap justify-content-center gap-3">
+        <a
+          href="{% url 'assistant:register' %}"
+          class="btn-primary-jarvis"
+          id="cta-register"
+          aria-label="Create your free Jarvis AI account"
+        >
+          <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+          Create Free Account
+        </a>
+        <a
+          href="{% url 'assistant:login' %}"
+          class="btn-secondary-jarvis"
+          id="cta-login"
+          aria-label="Log in to your existing Jarvis AI account"
+        >
+          <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+          Already have an account?
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  /*
+   * Staggered card entrance animation using Intersection Observer.
+   * Cards animate in as they enter the viewport.
+   */
+  (function () {
+    const cards = document.querySelectorAll('.feature-card');
+    if (!('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, _) => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    cards.forEach((card, i) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(28px)';
+      card.style.transition = `opacity 0.5s ${i * 0.1}s ease, transform 0.5s ${i * 0.1}s ease`;
+      observer.observe(card);
+    });
+  })();
+</script>
+{% endblock %}

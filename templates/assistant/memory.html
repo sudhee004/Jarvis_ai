@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Manage your personal AI memory — view, edit, and delete the facts Jarvis remembers about
+you.{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ====================================================================
+   Memory Page — Custom Styles
+==================================================================== */
+
+  /* --- Page hero --- */
+  .memory-hero {
+    background: linear-gradient(135deg, rgba(20, 241, 149, .08) 0%, rgba(15, 52, 96, .4) 100%);
+    border: 1px solid rgba(20, 241, 149, .15);
+    border-radius: 20px;
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .memory-hero-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #14f195, #0fc);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #0a0f1e;
+    flex-shrink: 0;
+  }
+
+  .memory-hero h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--clr-text);
+    margin: 0;
+  }
+
+  .memory-hero p {
+    color: var(--clr-text-muted);
+    margin: 0;
+  }
+
+  /* --- Stat chips --- */
+  .memory-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .45rem 1rem;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 50px;
+    font-size: .82rem;
+    color: var(--clr-text-muted);
+    font-weight: 500;
+  }
+
+  .stat-chip strong {
+    color: var(--clr-text);
+    font-size: .95rem;
+  }
+
+  .stat-chip i {
+    color: #14f195;
+  }
+
+  /* --- Category group --- */
+  .memory-section-title {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--clr-text-dim);
+    margin: 2rem 0 .75rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .memory-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, .08);
+  }
+
+  /* --- Memory card --- */
+  .memory-card {
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: .65rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: border-color .2s, background .2s;
+  }
+
+  .memory-card:hover {
+    border-color: rgba(20, 241, 149, .25);
+    background: rgba(20, 241, 149, .04);
+  }
+
+  .memory-key-badge {
+    background: rgba(20, 241, 149, .1);
+    border: 1px solid rgba(20, 241, 149, .2);
+    border-radius: 8px;
+    padding: .25rem .65rem;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #14f195;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .memory-value {
+    color: var(--clr-text-muted);
+    font-size: .9rem;
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .memory-value strong {
+    color: var(--clr-text);
+    font-weight: 500;
+  }
+
+  .memory-date {
+    font-size: .72rem;
+    color: var(--clr-text-dim);
+    white-space: nowrap;
+  }
+
+  .memory-actions {
+    display: flex;
+    gap: .4rem;
+    flex-shrink: 0;
+  }
+
+  .btn-mem-edit,
+  .btn-mem-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: .85rem;
+    transition: all .2s;
+  }
+
+  .btn-mem-edit {
+    background: rgba(99, 179, 237, .12);
+    color: #63b3ed;
+  }
+
+  .btn-mem-edit:hover {
+    background: rgba(99, 179, 237, .25);
+  }
+
+  .btn-mem-del {
+    background: rgba(245, 101, 101, .12);
+    color: #f56565;
+  }
+
+  .btn-mem-del:hover {
+    background: rgba(245, 101, 101, .25);
+  }
+
+  /* --- Empty state --- */
+  .memory-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--clr-text-dim);
+  }
+
+  .memory-empty i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+    opacity: .4;
+  }
+
+  /* --- Add memory card --- */
+  .add-memory-card {
+    background: rgba(255, 255, 255, .03);
+    border: 1px dashed rgba(20, 241, 149, .25);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+
+  .add-memory-card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--clr-text);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .add-memory-card h2 i {
+    color: #14f195;
+  }
+
+  .jarvis-input {
+    background: rgba(255, 255, 255, .05) !important;
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+    color: var(--clr-text) !important;
+    border-radius: 10px !important;
+    padding: .65rem 1rem !important;
+  }
+
+  .jarvis-input:focus {
+    border-color: rgba(20, 241, 149, .4) !important;
+    box-shadow: 0 0 0 3px rgba(20, 241, 149, .08) !important;
+    outline: none;
+  }
+
+  .jarvis-input::placeholder {
+    color: var(--clr-text-dim) !important;
+  }
+
+  .form-text {
+    color: var(--clr-text-dim) !important;
+    font-size: .75rem;
+  }
+
+  .form-select.jarvis-input option {
+    background: #1a2035;
+    color: #e2e8f0;
+  }
+
+  .btn-add-memory {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: linear-gradient(135deg, #14f195, #0fc);
+    color: #0a0f1e;
+    font-weight: 700;
+    font-size: .9rem;
+    border: none;
+    border-radius: 10px;
+    padding: .65rem 1.5rem;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s;
+  }
+
+  .btn-add-memory:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+  }
+
+  /* Delete confirm modal */
+  .delete-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+
+  .delete-modal-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .delete-modal-box {
+    background: #1a2035;
+    border: 1px solid rgba(245, 101, 101, .3);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    transform: scale(.95);
+    transition: transform .2s;
+  }
+
+  .delete-modal-overlay.show .delete-modal-box {
+    transform: scale(1);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-page" id="memory-page" aria-labelledby="memory-heading">
+  <div class="container">
+
+    <!-- ===== Hero ===== -->
+    <div class="memory-hero d-flex align-items-center gap-4 flex-wrap">
+      <div class="memory-hero-icon" aria-hidden="true">
+        <i class="bi bi-brain"></i>
+      </div>
+      <div>
+        <h1 id="memory-heading">My Memories</h1>
+        <p>Facts and preferences Jarvis has learned about you — used to personalise every response.</p>
+      </div>
+      <a href="{% url 'assistant:chat_home' %}" class="btn-secondary-jarvis ms-lg-auto" aria-label="Go to chat">
+        <i class="bi bi-chat-dots" aria-hidden="true"></i> Chat with Jarvis
+      </a>
+    </div>
+
+    <!-- ===== Stats chips ===== -->
+    <div class="memory-stats">
+      <span class="stat-chip">
+        <i class="bi bi-database" aria-hidden="true"></i>
+        <strong>{{ total }}</strong> total memor{{ total|pluralize:"y,ies" }}
+      </span>
+      {% for cs in category_stats %}
+      <span class="stat-chip">
+        <i class="bi bi-tag" aria-hidden="true"></i>
+        <strong>{{ cs.count }}</strong> {{ cs.label }}{{ cs.count|pluralize }}
+      </span>
+      {% endfor %}
+    </div>
+
+    <div class="row g-4">
+
+      <!-- ===== LEFT: Memory List ===== -->
+      <div class="col-lg-7">
+        {% if grouped %}
+        {% for cat_label, mems in grouped.items %}
+        <p class="memory-section-title" aria-label="{{ cat_label }} memories">
+          <i class="bi bi-tag-fill" aria-hidden="true"></i>
+          {{ cat_label }}s
+        </p>
+        {% for mem in mems %}
+        <article class="memory-card" id="mem-card-{{ mem.id }}" aria-label="{{ mem.key }} memory">
+          <code class="memory-key-badge">{{ mem.key }}</code>
+          <div class="flex-grow-1">
+            <p class="memory-value mb-1">{{ mem.value }}</p>
+            <span class="memory-date">
+              <i class="bi bi-clock me-1" aria-hidden="true"></i>
+              {{ mem.created_at|date:"N j, Y" }}
+              {% if mem.source_session %}
+              &bull; from chat
+              {% endif %}
+            </span>
+          </div>
+          <div class="memory-actions" role="group" aria-label="Memory actions">
+            <a href="{% url 'assistant:memory_edit' mem.id %}" class="btn-mem-edit" title="Edit"
+              aria-label="Edit {{ mem.key }}">
+              <i class="bi bi-pencil" aria-hidden="true"></i>
+            </a>
+            <button type="button" class="btn-mem-del js-delete-btn" title="Delete" aria-label="Delete {{ mem.key }}"
+              data-mem-id="{{ mem.id }}" data-mem-key="{{ mem.key|escapejs }}">
+              <i class="bi bi-trash3" aria-hidden="true"></i>
+            </button>
+          </div>
+        </article>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <div class="memory-empty">
+          <i class="bi bi-brain" aria-hidden="true"></i>
+          <h2 style="font-size:1.1rem;color:var(--clr-text-muted);">No memories yet</h2>
+          <p>Start chatting with Jarvis and share personal info — it will remember automatically.<br>
+            Or add one manually using the form on the right.</p>
+          <a href="{% url 'assistant:chat_home' %}" class="btn-primary-jarvis mt-3" id="mem-start-chat-btn">
+            <i class="bi bi-chat-dots" aria-hidden="true"></i> Start a Chat
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ===== RIGHT: Add Memory ===== -->
+      <div class="col-lg-5">
+        <div class="add-memory-card" id="add-memory-section">
+          <h2><i class="bi bi-plus-circle-fill" aria-hidden="true"></i> Add Memory Manually</h2>
+          <p style="font-size:.82rem;color:var(--clr-text-dim);margin-bottom:1.2rem;">
+            You can also tell Jarvis in chat — it learns automatically from your messages.
+          </p>
+
+          <form method="post" action="{% url 'assistant:memory_list' %}" id="addMemoryForm" novalidate>
+            {% csrf_token %}
+
+            <!-- Key -->
+            <div class="mb-3">
+              <label for="id_mem_key" class="form-label" style="font-size:.82rem;color:var(--clr-text-muted);">
+                Memory Key <span style="color:#f56565">*</span>
+              </label>
+              {{ form.key }}
+              {% if form.key.help_text %}
+              <div class="form-text">{{ form.key.help_text }}</div>
+              {% endif %}
+              {% for err in form.key.errors %}
+              <div class="form-text" style="color:#f56565;">{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Value -->
+            <div class="mb-3">
+              <label for="id_mem_value" class="form-label" style="font-size:.82rem;color:var(--clr-text-muted);">
+                Value <span style="color:#f56565">*</span>
+              </label>
+              {{ form.value }}
+              {% for err in form.value.errors %}
+              <div class="form-text" style="color:#f56565;">{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Category -->
+            <div class="mb-4">
+              <label for="id_mem_category" class="form-label" style="font-size:.82rem;color:var(--clr-text-muted);">
+                Category
+              </label>
+              {{ form.category }}
+            </div>
+
+            <button type="submit" class="btn-add-memory w-100" id="addMemBtn">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> Save Memory
+            </button>
+          </form>
+        </div>
+
+        <!-- Tips card -->
+        <div class="jarvis-alert alert-info mt-3" role="note">
+          <div class="alert-content">
+            <i class="bi bi-lightbulb-fill alert-icon" aria-hidden="true"></i>
+            <span>
+              <strong>Tip:</strong> Just tell Jarvis things like
+              <em>"My name is Sudhee"</em> or
+              <em>"I prefer Python"</em> and it will remember automatically.
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.row -->
+  </div>
+</section>
+
+<!-- ===== Delete Confirmation Modal ===== -->
+<div class="delete-modal-overlay" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+  <div class="delete-modal-box">
+    <h3 id="deleteModalTitle" style="font-size:1.1rem;color:var(--clr-text);margin-bottom:.5rem;">
+      <i class="bi bi-exclamation-triangle-fill" style="color:#f56565;margin-right:.4rem;" aria-hidden="true"></i>
+      Delete Memory
+    </h3>
+    <p style="color:var(--clr-text-muted);font-size:.9rem;margin-bottom:1.5rem;">
+      Delete <strong id="deleteModalKey" style="color:var(--clr-text);"></strong>? Jarvis will no longer remember this.
+    </p>
+    <form method="post" id="deleteForm">
+      {% csrf_token %}
+      <div class="d-flex gap-2 justify-content-end">
+        <button type="button" class="btn-secondary-jarvis" onclick="closeDeleteModal()" id="deleteCancelBtn">
+          Cancel
+        </button>
+        <button type="submit" class="btn-add-memory" style="background:linear-gradient(135deg,#f56565,#e53e3e);"
+          id="deleteConfirmBtn">
+          <i class="bi bi-trash3" aria-hidden="true"></i> Delete
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  /* =====================================================
+     Memory Page — JavaScript
+  ===================================================== */
+
+  // --- Delete modal (event delegation — reads data-* attrs, no inline onclick) ---
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-delete-btn');
+    if (!btn) return;
+    confirmDelete(btn.dataset.memId, btn.dataset.memKey);
+  });
+
+  function confirmDelete(id, key) {
+    document.getElementById('deleteModalKey').textContent = key;
+    document.getElementById('deleteForm').action = `/memory/${id}/delete/`;
+    document.getElementById('deleteModal').classList.add('show');
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('show');
+  }
+
+  // Close on overlay click
+  document.getElementById('deleteModal').addEventListener('click', function (e) {
+    if (e.target === this) closeDeleteModal();
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeDeleteModal();
+  });
+
+  // --- Card entrance animation ---
+  (function () {
+    const cards = document.querySelectorAll('.memory-card');
+    if (!('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.05 });
+    cards.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(16px)';
+      el.style.transition = `opacity 0.35s ${i * 50}ms ease, transform 0.35s ${i * 50}ms ease`;
+      io.observe(el);
+    });
+  })();
+</script>
+{% endblock %}

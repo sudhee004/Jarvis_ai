@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Upload documents and ask Jarvis to summarise, explain, or extract insights from your files.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ====================================================================
+   Knowledge Vault — styles
+==================================================================== */
+.vault-hero {
+  background: linear-gradient(135deg, rgba(159,122,234,.08) 0%, rgba(15,52,96,.4) 100%);
+  border: 1px solid rgba(159,122,234,.2);
+  border-radius: 20px; padding: 2rem 2.5rem; margin-bottom: 2rem;
+}
+.vault-hero-icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #9f7aea, #6b46c1);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #fff; flex-shrink: 0;
+}
+.vault-hero h1 { font-size: 1.8rem; font-weight: 700; color: var(--clr-text); margin: 0; }
+.vault-hero p  { color: var(--clr-text-muted); margin: 0; }
+
+/* Upload card */
+.upload-card {
+  background: rgba(255,255,255,.03);
+  border: 1px dashed rgba(159,122,234,.3);
+  border-radius: 16px; padding: 1.75rem;
+}
+.upload-card h2 { font-size: 1rem; font-weight: 600; color: var(--clr-text);
+  display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.upload-card h2 i { color: #9f7aea; }
+.jarvis-input {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+  color: var(--clr-text) !important; border-radius: 10px !important;
+  padding: .65rem 1rem !important;
+}
+.jarvis-input:focus { border-color: rgba(159,122,234,.5) !important;
+  box-shadow: 0 0 0 3px rgba(159,122,234,.1) !important; outline: none; }
+.jarvis-input::placeholder { color: var(--clr-text-dim) !important; }
+.form-text { color: var(--clr-text-dim) !important; font-size: .75rem; }
+.btn-upload {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: linear-gradient(135deg, #9f7aea, #6b46c1);
+  color: #fff; font-weight: 700; border: none; border-radius: 10px;
+  padding: .65rem 1.5rem; cursor: pointer; transition: opacity .2s, transform .15s;
+}
+.btn-upload:hover { opacity: .9; transform: translateY(-1px); }
+
+/* Doc card */
+.doc-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px; padding: 1.1rem 1.25rem;
+  margin-bottom: .75rem; transition: border-color .2s, background .2s;
+}
+.doc-card:hover { border-color: rgba(159,122,234,.25); background: rgba(159,122,234,.04); }
+.doc-type-icon { font-size: 1.6rem; flex-shrink: 0; }
+.doc-type-icon.pdf  { color: #f56565; }
+.doc-type-icon.docx { color: #63b3ed; }
+.doc-type-icon.pptx { color: #f6ad55; }
+.doc-type-icon.txt  { color: #9f7aea; }
+.doc-title  { font-weight: 600; color: var(--clr-text); }
+.doc-meta   { font-size: .75rem; color: var(--clr-text-dim); }
+.doc-badge  {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .72rem; font-weight: 600; padding: .2rem .6rem;
+  border-radius: 50px;
+}
+.doc-badge.processed { background: rgba(72,187,120,.15); color: #48bb78; }
+.doc-badge.pending   { background: rgba(246,173,85,.15);  color: #f6ad55; }
+
+/* Ask Jarvis panel */
+.ask-panel {
+  background: rgba(255,255,255,.02);
+  border-top: 1px solid rgba(255,255,255,.06);
+  padding: .85rem 1.25rem 1rem;
+  display: none;
+}
+.ask-panel.open { display: block; }
+.ask-input-row { display: flex; gap: .5rem; }
+.ask-input {
+  flex: 1; background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  color: var(--clr-text); padding: .55rem .9rem; font-size: .9rem;
+}
+.ask-input:focus { border-color: rgba(159,122,234,.4); outline: none;
+  box-shadow: 0 0 0 3px rgba(159,122,234,.08); }
+.ask-input::placeholder { color: var(--clr-text-dim); }
+.btn-ask {
+  background: linear-gradient(135deg, #9f7aea, #6b46c1);
+  color: #fff; border: none; border-radius: 10px;
+  padding: .55rem 1.1rem; cursor: pointer; font-size: .85rem;
+  display: flex; align-items: center; gap: .4rem; transition: opacity .2s;
+}
+.btn-ask:hover { opacity: .85; }
+.ask-answer {
+  margin-top: .85rem; font-size: .88rem; color: var(--clr-text-muted);
+  background: rgba(255,255,255,.03); border-radius: 10px;
+  padding: .85rem 1rem; border-left: 3px solid #9f7aea;
+  white-space: pre-wrap;
+}
+.ask-spinner { display: none; }
+.ask-spinner.show { display: inline-block; }
+
+/* Btn-doc-del */
+.btn-doc-del {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  background: rgba(245,101,101,.1); color: #f56565; cursor: pointer; transition: background .2s;
+}
+.btn-doc-del:hover { background: rgba(245,101,101,.25); }
+
+/* Empty state */
+.vault-empty { text-align: center; padding: 3rem 1rem; color: var(--clr-text-dim); }
+.vault-empty i { font-size: 2.5rem; opacity: .35; display: block; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-page" id="vault-page" aria-labelledby="vault-heading">
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="vault-hero d-flex align-items-center gap-4 flex-wrap">
+      <div class="vault-hero-icon" aria-hidden="true"><i class="bi bi-folder2-open"></i></div>
+      <div>
+        <h1 id="vault-heading">Knowledge Vault</h1>
+        <p>Upload documents — Jarvis reads them and answers any question you have.</p>
+      </div>
+      <a href="{% url 'assistant:chat_home' %}" class="btn-secondary-jarvis ms-lg-auto">
+        <i class="bi bi-chat-dots" aria-hidden="true"></i> Chat with Jarvis
+      </a>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- ===== LEFT: Doc list ===== -->
+      <div class="col-lg-7">
+        <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--clr-text-dim);margin-bottom:1rem;">
+          {{ total }} document{{ total|pluralize }}
+        </p>
+
+        {% if documents %}
+          {% for doc in documents %}
+          <div class="doc-card" id="doc-{{ doc.id }}">
+            <div class="d-flex align-items-start gap-3">
+              <i class="bi {{ doc.icon }} doc-type-icon {{ doc.file_type }}" aria-hidden="true"></i>
+              <div class="flex-grow-1 min-w-0">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="doc-title">{{ doc.title }}</span>
+                  {% if doc.is_processed %}
+                  <span class="doc-badge processed"><i class="bi bi-check-circle-fill"></i> Ready</span>
+                  {% else %}
+                  <span class="doc-badge pending"><i class="bi bi-hourglass-split"></i> Processing</span>
+                  {% endif %}
+                </div>
+                <p class="doc-meta mb-1">
+                  {{ doc.file_type|upper }} &bull; {{ doc.file_size_display }} &bull;
+                  {{ doc.created_at|date:"N j, Y" }}
+                  {% if doc.original_filename and doc.original_filename != doc.title %}
+                   &bull; {{ doc.original_filename }}
+                  {% endif %}
+                </p>
+                <div class="d-flex gap-2 flex-wrap">
+                  <!-- Ask Jarvis toggle: data-doc-id avoids inline Django template in onclick -->
+                  <button class="btn-ask js-ask-toggle"
+                    style="font-size:.78rem;padding:.35rem .9rem;"
+                    data-doc-id="{{ doc.id }}"
+                    id="askToggleBtn-{{ doc.id }}"
+                    aria-expanded="false"
+                    aria-controls="ask-panel-{{ doc.id }}">
+                    <i class="bi bi-stars" aria-hidden="true"></i> Ask Jarvis
+                  </button>
+                  <form method="post" action="{% url 'assistant:document_delete' doc.id %}"
+                    style="display:inline;" class="js-delete-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-doc-del js-delete-btn"
+                      data-doc-title="{{ doc.title|escapejs }}"
+                      title="Delete document"
+                      aria-label="Delete {{ doc.title }}">
+                      <i class="bi bi-trash3" aria-hidden="true"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ask Jarvis panel (hidden by default) -->
+            <div class="ask-panel" id="ask-panel-{{ doc.id }}" role="region" aria-label="Ask about {{ doc.title }}">
+              <div class="ask-input-row">
+                <!-- data-doc-id avoids inline Django template in onkeydown -->
+                <input type="text" class="ask-input js-ask-input"
+                  id="ask-input-{{ doc.id }}"
+                  data-doc-id="{{ doc.id }}"
+                  placeholder="Summarise this document / Extract skills / Create interview questions…"
+                  aria-label="Your question about {{ doc.title }}">
+                <button class="btn-ask js-ask-send"
+                  data-doc-id="{{ doc.id }}"
+                  id="ask-btn-{{ doc.id }}">
+                  <span class="ask-spinner spinner-border spinner-border-sm" id="ask-spin-{{ doc.id }}"
+                    role="status" aria-hidden="true"></span>
+                  <i class="bi bi-send-fill" aria-hidden="true"></i> Ask
+                </button>
+              </div>
+              <div class="ask-answer" id="ask-answer-{{ doc.id }}" style="display:none;"></div>
+              <button class="msg-speak-btn" id="ask-speak-btn-{{ doc.id }}"
+                style="display:none;margin-top:.5rem;background:none;border:none;color:var(--clr-text-dim);cursor:pointer;font-size:.8rem;">
+                <i class="bi bi-volume-up"></i> Speak answer
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="vault-empty">
+            <i class="bi bi-folder2" aria-hidden="true"></i>
+            <p>No documents yet — upload one using the form.<br>
+               Jarvis can summarise, explain, extract skills, and more.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- ===== RIGHT: Upload form ===== -->
+      <div class="col-lg-5">
+        <div class="upload-card">
+          <h2><i class="bi bi-cloud-upload-fill" aria-hidden="true"></i> Upload Document</h2>
+          <p style="font-size:.82rem;color:var(--clr-text-dim);margin-bottom:1.25rem;">
+            Supported: PDF, DOCX, PPTX, TXT &bull; Max 10 MB
+          </p>
+
+          <form method="post" enctype="multipart/form-data" id="uploadForm" action="{% url 'assistant:document_list' %}" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="id_doc_title" class="form-label" style="font-size:.82rem;color:var(--clr-text-muted);">
+                Title <small style="color:var(--clr-text-dim);">(optional)</small>
+              </label>
+              {{ form.title }}
+            </div>
+
+            <div class="mb-4">
+              <label for="id_doc_file" class="form-label" style="font-size:.82rem;color:var(--clr-text-muted);">
+                File <span style="color:#f56565;">*</span>
+              </label>
+              {{ form.file }}
+              {% if form.file.help_text %}
+              <div class="form-text">{{ form.file.help_text }}</div>
+              {% endif %}
+              {% for err in form.file.errors %}
+              <div class="form-text" style="color:#f56565;">{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-upload w-100" id="uploadBtn">
+              <i class="bi bi-cloud-upload" aria-hidden="true"></i> Upload & Process
+            </button>
+          </form>
+        </div>
+
+        <div class="jarvis-alert alert-info mt-3" role="note">
+          <div class="alert-content">
+            <i class="bi bi-lightbulb-fill alert-icon" aria-hidden="true"></i>
+            <span>
+              <strong>Try asking:</strong>
+              "Summarise this document", "Extract skills from resume",
+              "Create 5 interview questions", "Explain this in simple terms"
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const CSRF = '{{ csrf_token }}';
+
+  /* ---------------------------------------------------------------
+     Event delegation — replaces all inline onclick / onkeydown.
+     No Django template tags inside JS attributes => zero lint errors.
+  --------------------------------------------------------------- */
+
+  // "Ask Jarvis" toggle button
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-ask-toggle');
+    if (!btn) return;
+    toggleAskPanel(btn.dataset.docId);
+  });
+
+  // "Ask" send button inside the panel
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-ask-send');
+    if (!btn) return;
+    askDocument(btn.dataset.docId);
+  });
+
+  // Enter key inside the ask input
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    const inp = e.target.closest('.js-ask-input');
+    if (!inp) return;
+    e.preventDefault();
+    askDocument(inp.dataset.docId);
+  });
+
+  // Delete confirm (replaces onsubmit)
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-delete-btn');
+    if (!btn) return;
+    const title = btn.dataset.docTitle || 'this document';
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) {
+      e.preventDefault();
+    }
+  });
+
+  /* ---------------------------------------------------------------
+     Core functions (unchanged logic, no inline template tags)
+  --------------------------------------------------------------- */
+
+  function toggleAskPanel(docId) {
+    const panel  = document.getElementById(`ask-panel-${docId}`);
+    const togBtn = document.getElementById(`askToggleBtn-${docId}`);
+    if (!panel || !togBtn) return;
+    const open = panel.classList.toggle('open');
+    togBtn.setAttribute('aria-expanded', String(open));
+    if (open) document.getElementById(`ask-input-${docId}`)?.focus();
+  }
+
+  async function askDocument(docId) {
+    const inp      = document.getElementById(`ask-input-${docId}`);
+    const ansEl    = document.getElementById(`ask-answer-${docId}`);
+    const spinEl   = document.getElementById(`ask-spin-${docId}`);
+    const speakBtn = document.getElementById(`ask-speak-btn-${docId}`);
+    const question = inp?.value.trim();
+    if (!question) { inp?.focus(); return; }
+
+    spinEl?.classList.add('show');
+    if (ansEl)    ansEl.style.display    = 'none';
+    if (speakBtn) speakBtn.style.display = 'none';
+
+    try {
+      const resp = await fetch(`/documents/${docId}/ask/`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body:    JSON.stringify({ question }),
+      });
+      const data = await resp.json();
+      spinEl?.classList.remove('show');
+
+      if (data.answer) {
+        ansEl.textContent   = data.answer;
+        ansEl.style.display = 'block';
+        if (speakBtn) {
+          speakBtn.dataset.text = data.answer;
+          speakBtn.style.display = 'inline-flex';
+        }
+        window.JarvisVoice?.speakForce(data.answer);
+      } else {
+        ansEl.textContent   = data.error || 'Something went wrong.';
+        ansEl.style.display = 'block';
+      }
+    } catch {
+      spinEl?.classList.remove('show');
+      ansEl.textContent   = 'Network error — please try again.';
+      ansEl.style.display = 'block';
+    }
+  }
+</script>
+{% endblock %}

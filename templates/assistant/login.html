@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Log in to your Jarvis AI Assistant account to access your personal AI-powered productivity dashboard.{% endblock %}
+
+{% block content %}
+<section class="auth-page" id="login-page" aria-labelledby="login-heading">
+  <div class="container">
+
+    <div class="auth-card">
+
+      <!-- Icon -->
+      <div class="auth-icon" aria-hidden="true">
+        <i class="bi bi-lightning-charge-fill"></i>
+      </div>
+
+      <!-- Heading -->
+      <h1 class="auth-title" id="login-heading">Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to continue to your Jarvis dashboard</p>
+
+      <!-- Login Form -->
+      <form
+        method="post"
+        action="{% url 'assistant:login' %}"
+        id="login-form"
+        novalidate
+        aria-label="Login form"
+      >
+        {% csrf_token %}
+
+        <!-- Username -->
+        <div class="mb-3">
+          <label class="auth-label" for="{{ form.username.id_for_label }}">
+            <i class="bi bi-person me-1" aria-hidden="true"></i>Username
+          </label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <ul class="errorlist" role="alert">
+              {% for error in form.username.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="mb-3">
+          <label class="auth-label" for="{{ form.password.id_for_label }}">
+            <i class="bi bi-lock me-1" aria-hidden="true"></i>Password
+          </label>
+          <div class="input-icon-wrap">
+            {{ form.password }}
+            <button
+              type="button"
+              class="input-toggle-btn"
+              id="toggle-password"
+              aria-label="Toggle password visibility"
+              onclick="togglePassword('{{ form.password.id_for_label }}', this)"
+            >
+              <i class="bi bi-eye" aria-hidden="true"></i>
+            </button>
+          </div>
+          {% if form.password.errors %}
+            <ul class="errorlist" role="alert">
+              {% for error in form.password.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+
+        <!-- Non-field errors (invalid credentials) -->
+        {% if form.non_field_errors %}
+          <div class="jarvis-alert alert-danger mb-3" role="alert">
+            <div class="alert-content">
+              <i class="bi bi-exclamation-triangle-fill alert-icon" aria-hidden="true"></i>
+              <span>
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+              </span>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Remember Me + Forgot Password -->
+        <div class="remember-row">
+          <label class="remember-label" for="{{ form.remember_me.id_for_label }}">
+            {{ form.remember_me }}
+            {{ form.remember_me.label }}
+          </label>
+          <a href="#" class="forgot-link" id="forgot-password-link">Forgot password?</a>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          class="btn-auth-submit"
+          id="login-submit-btn"
+          aria-label="Sign in to Jarvis AI"
+        >
+          <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+          Sign In
+        </button>
+
+      </form>
+
+      <hr class="auth-divider" />
+
+      <!-- Switch to register -->
+      <p class="auth-switch">
+        Don't have an account?
+        <a href="{% url 'assistant:register' %}" id="switch-to-register">
+          Create one for free
+        </a>
+      </p>
+
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  /* Password show / hide toggle */
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon  = btn.querySelector('i');
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  }
+</script>
+{% endblock %}
